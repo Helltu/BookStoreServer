@@ -49,7 +49,7 @@ local.properties
 .buildpath
 
 # Spring Boot config
-/application.properties
+application.properties
 
 # sbteclipse plugin
 .target
