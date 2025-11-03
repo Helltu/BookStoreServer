@@ -48,6 +48,9 @@ local.properties
 # PDT-specific (PHP Development Tools)
 .buildpath
 
+# Spring Boot config
+/application.properties
+
 # sbteclipse plugin
 .target
 
