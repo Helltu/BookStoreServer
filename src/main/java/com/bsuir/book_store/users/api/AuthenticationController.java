@@ -1,9 +1,9 @@
-package com.bsuir.book_store.controller;
+package com.bsuir.book_store.users.api;
 
-import com.bsuir.book_store.dto.AuthenticationRequest;
-import com.bsuir.book_store.dto.AuthenticationResponse;
-import com.bsuir.book_store.dto.RegisterRequest;
-import com.bsuir.book_store.service.AuthenticationService;
+import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
+import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
+import com.bsuir.book_store.users.api.dto.RegisterRequest;
+import com.bsuir.book_store.users.application.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

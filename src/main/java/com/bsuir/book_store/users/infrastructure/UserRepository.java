@@ -1,7 +1,7 @@
-package com.bsuir.book_store.repository;
+package com.bsuir.book_store.users.infrastructure;
 
-import com.bsuir.book_store.entity.Role;
-import com.bsuir.book_store.entity.User;
+import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
-package com.bsuir.book_store.config;
+package com.bsuir.book_store.shared.config;
 
-import com.bsuir.book_store.security.JwtAuthenticationFilter;
+import com.bsuir.book_store.shared.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

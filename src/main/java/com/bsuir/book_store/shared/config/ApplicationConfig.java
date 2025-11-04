@@ -1,6 +1,6 @@
-package com.bsuir.book_store.config;
+package com.bsuir.book_store.shared.config;
 
-import com.bsuir.book_store.repository.UserRepository;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

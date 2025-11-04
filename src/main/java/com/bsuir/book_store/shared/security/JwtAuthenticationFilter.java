@@ -1,4 +1,4 @@
-package com.bsuir.book_store.security;
+package com.bsuir.book_store.shared.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

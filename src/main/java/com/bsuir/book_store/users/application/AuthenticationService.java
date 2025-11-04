@@ -1,12 +1,12 @@
-package com.bsuir.book_store.service;
+package com.bsuir.book_store.users.application;
 
-import com.bsuir.book_store.dto.AuthenticationRequest;
-import com.bsuir.book_store.dto.AuthenticationResponse;
-import com.bsuir.book_store.dto.RegisterRequest;
-import com.bsuir.book_store.entity.Role;
-import com.bsuir.book_store.entity.User;
-import com.bsuir.book_store.repository.UserRepository;
-import com.bsuir.book_store.security.JwtService;
+import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
+import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
+import com.bsuir.book_store.users.api.dto.RegisterRequest;
+import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

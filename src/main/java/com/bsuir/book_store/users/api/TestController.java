@@ -1,8 +1,8 @@
-package com.bsuir.book_store.controller;
+package com.bsuir.book_store.users.api;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import com.bsuir.book_store.security.annotations.IsManager;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 

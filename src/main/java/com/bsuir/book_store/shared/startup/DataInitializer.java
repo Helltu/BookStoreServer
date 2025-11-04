@@ -1,8 +1,8 @@
-package com.bsuir.book_store.startup;
+package com.bsuir.book_store.shared.startup;
 
-import com.bsuir.book_store.entity.Role;
-import com.bsuir.book_store.entity.User;
-import com.bsuir.book_store.repository.UserRepository;
+import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

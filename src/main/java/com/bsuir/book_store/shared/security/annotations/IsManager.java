@@ -1,4 +1,4 @@
-package com.bsuir.book_store.security.annotations;
+package com.bsuir.book_store.shared.security.annotations;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.lang.annotation.ElementType;
