@@ -1,0 +1,42 @@
+services:
+    book-store-app:
+      build: .
+      ports:
+        - "8080:8080"
+      environment:
+        - SPRING_PROFILES_ACTIVE=docker
+      depends_on:
+        mysql-db:
+          condition: service_healthy
+        elasticsearch:
+          condition: service_started
+
+    mysql-db:
+      image: mysql:8.0
+      ports:
+        - "3306:3306"
+      environment:
+        - MYSQL_ROOT_PASSWORD=root
+        - MYSQL_DATABASE=book_store
+      volumes:
+        - mysql-data:/var/lib/mysql
+      healthcheck:
+        test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+    elasticsearch:
+      image: elasticsearch:8.11.1
+      ports:
+        - "9200:9200"
+        - "9300:9300"
+      environment:
+        - discovery.type=single-node
+        - xpack.security.enabled=false
+      volumes:
+        - elasticsearch-data:/usr/share/elasticsearch/data
+
+volumes:
+  mysql-data:
+  elasticsearch-data:
