@@ -1,6 +1,6 @@
 package com.bsuir.book_store.users.infrastructure;
 
-import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

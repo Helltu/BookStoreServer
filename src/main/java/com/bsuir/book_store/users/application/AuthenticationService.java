@@ -3,7 +3,7 @@ package com.bsuir.book_store.users.application;
 import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
 import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
 import com.bsuir.book_store.users.api.dto.RegisterRequest;
-import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.domain.User;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
 import com.bsuir.book_store.shared.security.JwtService;

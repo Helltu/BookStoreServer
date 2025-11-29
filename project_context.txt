@@ -1,0 +1,1939 @@
+
+============================================================
+FILE PATH: docker-compose.yml
+============================================================
+
+services:
+    book-store-app:
+      build: .
+      ports:
+        - "8080:8080"
+      environment:
+        - SPRING_PROFILES_ACTIVE=docker
+      depends_on:
+        mysql-db:
+          condition: service_healthy
+        elasticsearch:
+          condition: service_started
+
+    mysql-db:
+      image: mysql:8.0
+      ports:
+        - "3306:3306"
+      environment:
+        - MYSQL_ROOT_PASSWORD=root
+        - MYSQL_DATABASE=book_store
+      volumes:
+        - mysql-data:/var/lib/mysql
+      healthcheck:
+        test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+    elasticsearch:
+      image: elasticsearch:8.11.1
+      ports:
+        - "9201:9200"
+        - "9300:9300"
+      environment:
+        - discovery.type=single-node
+        - xpack.security.enabled=false
+        - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      volumes:
+        - elasticsearch-data:/usr/share/elasticsearch/data
+
+volumes:
+  mysql-data:
+  elasticsearch-data:
+
+============================================================
+FILE PATH: HELP.md
+============================================================
+
+# Read Me First
+The following was discovered as part of building this project:
+
+* The original package name 'com.bsuir.book-store' is invalid and this project uses 'com.bsuir.book_store' instead.
+
+# Getting Started
+
+### Reference Documentation
+For further reference, please consider the following sections:
+
+* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
+* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/3.5.7/maven-plugin)
+* [Create an OCI image](https://docs.spring.io/spring-boot/3.5.7/maven-plugin/build-image.html)
+* [Spring Security](https://docs.spring.io/spring-boot/3.5.7/reference/web/spring-security.html)
+* [Spring Web](https://docs.spring.io/spring-boot/3.5.7/reference/web/servlet.html)
+* [Spring Data JPA](https://docs.spring.io/spring-boot/3.5.7/reference/data/sql.html#data.sql.jpa-and-spring-data)
+
+### Guides
+The following guides illustrate how to use some features concretely:
+
+* [Securing a Web Application](https://spring.io/guides/gs/securing-web/)
+* [Spring Boot and OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2/)
+* [Authenticating a User with LDAP](https://spring.io/guides/gs/authenticating-ldap/)
+* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
+* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
+* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
+* [Accessing Data with JPA](https://spring.io/guides/gs/accessing-data-jpa/)
+* [Accessing data with MySQL](https://spring.io/guides/gs/accessing-data-mysql/)
+
+### Maven Parent overrides
+
+Due to Maven's design, elements are inherited from the parent POM to the project POM.
+While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
+To prevent this, the project POM contains empty overrides for these elements.
+If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
+
+
+
+============================================================
+FILE PATH: pom.xml
+============================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.7</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.bsuir</groupId>
+	<artifactId>book-store</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>book-store</name>
+	<description>Demo project for Spring Boot</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>21</java.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.11.5</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.11.5</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.11.5</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.42</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+
+
+============================================================
+FILE PATH: README.md
+============================================================
+
+# BookStoreServer
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\BookStoreApplication.java
+============================================================
+
+package com.bsuir.book_store;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class BookStoreApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(BookStoreApplication.class, args);
+	}
+
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\analytics\api\AnalyticsController.java
+============================================================
+
+package com.bsuir.book_store.analytics.api;
+
+import com.bsuir.book_store.analytics.api.dto.AnalyticsResponse;
+import com.bsuir.book_store.analytics.application.AnalyticsService;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/analytics")
+@RequiredArgsConstructor
+public class AnalyticsController {
+
+    private final AnalyticsService analyticsService;
+
+    @GetMapping
+    @IsManager
+    public ResponseEntity<AnalyticsResponse> getDashboard() {
+        return ResponseEntity.ok(analyticsService.getDashboardData());
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\analytics\api\dto\AnalyticsResponse.java
+============================================================
+
+package com.bsuir.book_store.analytics.api.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Data
+@Builder
+public class AnalyticsResponse {
+    private Summary summary;
+
+    private List<DatePoint> salesOverTime;
+
+    private List<CategoryPoint> salesByCategory;
+
+    private List<BookPoint> topSellingBooks;
+
+    @Data
+    @Builder
+    public static class Summary {
+        private long totalOrders;
+        private BigDecimal totalRevenue;
+        private long totalBooksSold;
+        private double averageCheck;
+    }
+
+    @Data
+    @Builder
+    public static class DatePoint {
+        private String date;
+        private BigDecimal value;
+    }
+
+    @Data
+    @Builder
+    public static class CategoryPoint {
+        private String category;
+        private long count;
+    }
+
+    @Data
+    @Builder
+    public static class BookPoint {
+        private String title;
+        private long soldCount;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\analytics\application\AnalyticsService.java
+============================================================
+
+package com.bsuir.book_store.analytics.application;
+
+import com.bsuir.book_store.analytics.api.dto.AnalyticsResponse;
+import com.bsuir.book_store.orders.domain.Order;
+import com.bsuir.book_store.orders.domain.OrderItem;
+import com.bsuir.book_store.orders.domain.OrderStatus;
+import com.bsuir.book_store.orders.infrastructure.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class AnalyticsService {
+
+    private final OrderRepository orderRepository;
+
+    @Transactional(readOnly = true)
+    public AnalyticsResponse getDashboardData() {
+        List<Order> orders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
+                .toList();
+
+        long totalOrders = orders.size();
+        BigDecimal totalRevenue = orders.stream()
+                .map(Order::getTotalCost) // В вашей сущности Order поле называется totalCost
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long totalBooksSold = orders.stream()
+                .flatMap(o -> o.getOrderItems().stream())
+                .mapToLong(OrderItem::getQuantity)
+                .sum();
+
+        double averageCheck = totalOrders > 0
+                ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP).doubleValue()
+                : 0.0;
+
+        // 3. График продаж по датам (Sales Over Time)
+        Map<LocalDate, BigDecimal> revenueByDate = orders.stream()
+                .collect(Collectors.groupingBy(
+                        order -> order.getCreatedAt().toLocalDateTime().toLocalDate(),
+                        Collectors.reducing(BigDecimal.ZERO, Order::getTotalCost, BigDecimal::add)
+                ));
+
+        List<AnalyticsResponse.DatePoint> salesOverTime = revenueByDate.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> AnalyticsResponse.DatePoint.builder()
+                        .date(entry.getKey().format(DateTimeFormatter.ISO_DATE))
+                        .value(entry.getValue())
+                        .build())
+                .toList();
+
+        List<OrderItem> allItems = orders.stream()
+                .flatMap(o -> o.getOrderItems().stream())
+                .toList();
+
+        Map<String, Long> categoryStats = allItems.stream()
+                .flatMap(item -> item.getBook().getGenres().stream())
+                .collect(Collectors.groupingBy(
+                        genre -> genre.getName(),
+                        Collectors.counting()
+                ));
+
+        List<AnalyticsResponse.CategoryPoint> salesByCategory = categoryStats.entrySet().stream()
+                .map(entry -> AnalyticsResponse.CategoryPoint.builder()
+                        .category(entry.getKey())
+                        .count(entry.getValue())
+                        .build())
+                .toList();
+
+        // 5. Топ продаваемых книг
+        Map<String, Long> bookStats = allItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getBookTitle(), // Используем сохраненное название
+                        Collectors.summingLong(OrderItem::getQuantity)
+                ));
+
+        List<AnalyticsResponse.BookPoint> topBooks = bookStats.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5) // Топ-5
+                .map(entry -> AnalyticsResponse.BookPoint.builder()
+                        .title(entry.getKey())
+                        .soldCount(entry.getValue())
+                        .build())
+                .toList();
+
+        return AnalyticsResponse.builder()
+                .summary(AnalyticsResponse.Summary.builder()
+                        .totalOrders(totalOrders)
+                        .totalRevenue(totalRevenue)
+                        .totalBooksSold(totalBooksSold)
+                        .averageCheck(averageCheck)
+                        .build())
+                .salesOverTime(salesOverTime)
+                .salesByCategory(salesByCategory)
+                .topSellingBooks(topBooks)
+                .build();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\api\CatalogController.java
+============================================================
+
+package com.bsuir.book_store.catalog.api;
+
+import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
+import com.bsuir.book_store.catalog.application.CatalogCommandService;
+import com.bsuir.book_store.catalog.application.CatalogQueryService;
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/catalog")
+@RequiredArgsConstructor
+public class CatalogController {
+
+    private final CatalogCommandService commandService;
+    private final CatalogQueryService queryService;
+
+    @GetMapping("/search")
+    public ResponseEntity<List<BookDocument>> search(@RequestParam(required = false) String q) {
+        return ResponseEntity.ok(queryService.search(q));
+    }
+
+    @PostMapping("/books")
+    @IsManager
+    public ResponseEntity<UUID> createBook(@RequestBody CreateBookRequest request) {
+        return ResponseEntity.ok(commandService.createBook(request));
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\api\dto\CreateBookRequest.java
+============================================================
+
+package com.bsuir.book_store.catalog.api.dto;
+
+import lombok.Data;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+public class CreateBookRequest {
+    private String title;
+    private String description;
+    private String isbn;
+    private BigDecimal price;
+    private int stock;
+    private List<UUID> authorIds;
+    private List<UUID> genreIds;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\application\CatalogCommandService.java
+============================================================
+
+package com.bsuir.book_store.catalog.application;
+
+import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
+import com.bsuir.book_store.catalog.domain.model.Author;
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.domain.model.Genre;
+import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class CatalogCommandService {
+
+    private final BookRepository bookRepository;
+    private final AuthorRepository authorRepository;
+    private final GenreRepository genreRepository;
+    private final SearchSyncService searchSyncService;
+
+    @Transactional
+    public UUID createBook(CreateBookRequest request) {
+        Set<Author> authors = new HashSet<>(authorRepository.findAllById(request.getAuthorIds()));
+        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
+
+        // 2. Создаем сущность (Rich Model)
+        Book book = Book.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .isbn(request.getIsbn())
+                .cost(request.getPrice())
+                .stockQuantity(request.getStock())
+                .authors(authors)
+                .genres(genres)
+                .build();
+
+        book = bookRepository.save(book);
+
+        searchSyncService.syncBook(book);
+
+        return book.getId();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\application\CatalogQueryService.java
+============================================================
+
+package com.bsuir.book_store.catalog.application;
+
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CatalogQueryService {
+
+    private final BookElasticRepository elasticRepository;
+
+    public List<BookDocument> search(String query) {
+        if (query == null || query.isBlank()) {
+            Iterable<BookDocument> all = elasticRepository.findAll();
+            return (List<BookDocument>) all;
+        }
+        return elasticRepository.findByTitleContainingOrAuthorsContaining(query, query);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\application\sync\SearchSyncService.java
+============================================================
+
+package com.bsuir.book_store.catalog.application.sync;
+
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class SearchSyncService {
+
+    private final BookElasticRepository elasticRepository;
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void syncBook(Book book) {
+        BookDocument doc = BookDocument.builder()
+                .id(book.getId().toString())
+                .title(book.getTitle())
+                .description(book.getDescription())
+                .isbn(book.getIsbn())
+                .price(book.getCost())
+                .authors(book.getAuthors().stream().map(a -> a.getName()).toList())
+                .genres(book.getGenres().stream().map(g -> g.getName()).toList())
+                .build();
+
+        elasticRepository.save(doc);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\document\BookDocument.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.document;
+
+import lombok.Builder;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Data
+@Builder
+@Document(indexName = "books")
+public class BookDocument {
+
+    @Id
+    private String id;
+
+    @Field(type = FieldType.Text, analyzer = "standard")
+    private String title;
+
+    @Field(type = FieldType.Text)
+    private String description;
+
+    @Field(type = FieldType.Keyword)
+    private String isbn;
+
+    @Field(type = FieldType.Double)
+    private BigDecimal price;
+
+    @Field(type = FieldType.Text)
+    private List<String> authors;
+
+    @Field(type = FieldType.Keyword)
+    private List<String> genres;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Author.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "authors")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Author {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String biography;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Book.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+import com.bsuir.book_store.shared.exception.DomainException;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@Entity
+@Table(name = "books")
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Book {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Column(unique = true)
+    private String isbn;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "stock_quantity", nullable = false)
+    private int stockQuantity;
+
+    @Column(nullable = false)
+    private BigDecimal cost;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "book_authors",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "author_id")
+    )
+    private Set<Author> authors = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "book_genres",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private Set<Genre> genres = new HashSet<>();
+
+    @CreationTimestamp
+    private Timestamp createdAt;
+
+    @UpdateTimestamp
+    private Timestamp updatedAt;
+
+
+    public void reserveStock(int quantity) {
+        if (quantity <= 0) throw new DomainException("Количество должно быть положительным");
+        if (this.stockQuantity < quantity) {
+            throw new DomainException("Недостаточно товара '" + title + "' на складе. Доступно: " + stockQuantity);
+        }
+        this.stockQuantity -= quantity;
+    }
+
+    public void releaseStock(int quantity) {
+        this.stockQuantity += quantity;
+    }
+
+    public void updatePrice(BigDecimal newPrice) {
+        if (newPrice.compareTo(BigDecimal.ZERO) < 0) throw new DomainException("Цена не может быть отрицательной");
+        this.cost = newPrice;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Genre.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "genres")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Genre {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String name;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Image.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+import com.bsuir.book_store.catalog.domain.model.ImageType;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import java.sql.Timestamp;
+import java.util.UUID;
+
+@Entity
+@Table(name = "images")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Image {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String url;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "image_type")
+    private ImageType imageType;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Publisher.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "publishers")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Publisher {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @ManyToOne
+    @JoinColumn(name = "logo_image_id")
+    private Image logo;
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\elastic\BookElasticRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.elastic;
+
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import java.util.List;
+
+public interface BookElasticRepository extends ElasticsearchRepository<BookDocument, String> {
+    List<BookDocument> findByTitleContainingOrAuthorsContaining(String title, String author);
+    List<BookDocument> findByGenresIn(List<String> genres);
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\AuthorRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.jpa;
+
+import com.bsuir.book_store.catalog.domain.model.Author;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface AuthorRepository extends JpaRepository<Author, UUID> {
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\BookRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.jpa;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface BookRepository extends JpaRepository<Book, UUID> {
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\GenreRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.jpa;
+
+import com.bsuir.book_store.catalog.domain.model.Genre;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface GenreRepository extends JpaRepository<Genre, UUID> {
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\ImageRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.jpa;
+
+import com.bsuir.book_store.catalog.domain.model.Image;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface ImageRepository extends JpaRepository<Image, UUID> {
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\PublisherRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.jpa;
+
+import com.bsuir.book_store.catalog.domain.model.Publisher;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.UUID;
+
+public interface PublisherRepository extends JpaRepository<Publisher, UUID> {
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\DelieveryDetails.java
+============================================================
+
+package com.bsuir.book_store.orders.domain;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.sql.Date;
+import java.util.UUID;
+
+@Entity
+@Table(name = "delivery_details")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DelieveryDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "order_id")
+    private UUID orderId;
+
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "order_id")
+    private Order order;
+
+    @Column(name = "customer_name")
+    private String customerName;
+
+    @Column(name = "contact_phone")
+    private String contactPhone;
+
+    @Column(name = "address_text", columnDefinition = "TEXT")
+    private String addressText;
+
+    @Column(name = "delivery_notes", columnDefinition = "TEXT")
+    private String deliveryNotes;
+
+    @Column(name = "delivery_date")
+    private Date deliveryDate;
+
+    @Column(name = "delivery_time_slot")
+    private String deliveryTimeSlot;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\Order.java
+============================================================
+
+package com.bsuir.book_store.orders.domain;
+
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.orders.domain.OrderStatus;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "orders")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(name = "order_number", unique = true)
+    private String orderNumber;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Column(name = "order_date")
+    private Timestamp orderDate;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+
+    @Column(name = "total_cost")
+    private BigDecimal totalCost;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private List<OrderItem> orderItems;
+
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    private DelieveryDetails deliveryDetails;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\OrderItem.java
+============================================================
+
+package com.bsuir.book_store.orders.domain;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import jakarta.persistence.*;
+import lombok.*;
+import java.math.BigDecimal;
+import java.util.UUID;
+
+@Entity
+@Table(name = "order_items")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderItem {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne
+    @JoinColumn(name = "order_id")
+    private Order order;
+
+    @ManyToOne
+    @JoinColumn(name = "book_id")
+    private Book book;
+
+    @Column(name = "book_title")
+    private String bookTitle;
+
+    private String isbn;
+
+    private Integer quantity;
+
+    @Column(name = "price_per_item")
+    private BigDecimal pricePerItem;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\config\ApplicationConfig.java
+============================================================
+
+package com.bsuir.book_store.shared.config;
+
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+@RequiredArgsConstructor
+public class ApplicationConfig {
+    private final UserRepository userRepository;
+
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return username -> userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\config\SecurityConfig.java
+============================================================
+
+package com.bsuir.book_store.shared.config;
+
+import com.bsuir.book_store.shared.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(req -> req
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\domain\ImageType.java
+============================================================
+
+package com.bsuir.book_store.shared.domain;
+
+public enum ImageType {
+    COVER,
+    ILLUSTRATION,
+    AUTHOR_PHOTO,
+    LOGO
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\domain\OrderStatus.java
+============================================================
+
+package com.bsuir.book_store.shared.domain;
+
+public enum OrderStatus {
+    NEW, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\exception\DomainException.java
+============================================================
+
+package com.bsuir.book_store.shared.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.BAD_REQUEST)
+public class DomainException extends RuntimeException {
+
+    public DomainException(String message) {
+        super(message);
+    }
+
+    public DomainException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\exception\GlobalExceptionHandler.java
+============================================================
+
+package com.bsuir.book_store.shared.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<Object> handleDomainException(DomainException ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({jakarta.persistence.EntityNotFoundException.class})
+    public ResponseEntity<Object> handleNotFoundException(Exception ex) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleGlobalException(Exception ex) {
+        ex.printStackTrace();
+        return buildErrorResponse("Внутренняя ошибка сервера: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+
+        return new ResponseEntity<>(body, status);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\security\JwtAuthenticationFilter.java
+============================================================
+
+package com.bsuir.book_store.shared.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtService jwtService;
+    private final UserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        final String authHeader = request.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String jwt = authHeader.substring(7);
+        final String username = jwtService.extractUsername(jwt);
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+            if (jwtService.isTokenValid(jwt, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\security\JwtService.java
+============================================================
+
+package com.bsuir.book_store.shared.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import java.security.Key;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+@Service
+public class JwtService {
+
+    @Value("${application.security.jwt.secret-key}")
+    private String secretKey;
+
+    @Value("${application.security.jwt.expiration}")
+    private long jwtExpiration;
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    public String generateToken(UserDetails userDetails) {
+        return generateToken(new HashMap<>(), userDetails);
+    }
+
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return Jwts
+                .builder()
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts
+                .parserBuilder()
+                .setSigningKey(getSignInKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private Key getSignInKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\security\annotations\IsManager.java
+============================================================
+
+package com.bsuir.book_store.shared.security.annotations;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@PreAuthorize("hasAuthority('MANAGER')")
+public @interface IsManager {
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\startup\DataInitializer.java
+============================================================
+
+package com.bsuir.book_store.shared.startup;
+
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class DataInitializer implements CommandLineRunner {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${manager.password}")
+    private String managerPassword;
+
+    @Override
+    public void run(String... args) throws Exception {
+        if (userRepository.findByRole(Role.MANAGER).isEmpty()) {
+            log.info("No managers found. Creating a default manager account...");
+            User manager = User.builder()
+                    .username("manager")
+                    .email("manager@bookstore.com")
+                    .password(passwordEncoder.encode(managerPassword))
+                    .role(Role.MANAGER)
+                    .build();
+            userRepository.save(manager);
+            log.info("Default manager account created with username 'manager'");
+        }
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\AuthenticationController.java
+============================================================
+
+package com.bsuir.book_store.users.api;
+
+import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
+import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
+import com.bsuir.book_store.users.api.dto.RegisterRequest;
+import com.bsuir.book_store.users.application.AuthenticationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthenticationController {
+
+    private final AuthenticationService authenticationService;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthenticationResponse> register(
+            @RequestBody RegisterRequest request
+    ) {
+        return ResponseEntity.ok(authenticationService.register(request));
+    }
+
+    @PostMapping("/authenticate")
+    public ResponseEntity<AuthenticationResponse> authenticate(
+            @RequestBody AuthenticationRequest request
+    ) {
+        return ResponseEntity.ok(authenticationService.authenticate(request));
+    }
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\TestController.java
+============================================================
+
+package com.bsuir.book_store.users.api;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/test")
+public class TestController {
+
+    @GetMapping("/hello-user")
+    public ResponseEntity<String> sayHelloUser() {
+        return ResponseEntity.ok("Hello, Authenticated User!");
+    }
+
+    @GetMapping("/hello-manager")
+    @IsManager
+    public ResponseEntity<String> sayHelloManager() {
+        return ResponseEntity.ok("Hello, Manager!");
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AuthenticationRequest.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class AuthenticationRequest {
+    private String username;
+    private String password;
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AuthenticationResponse.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class AuthenticationResponse {
+    private String token;
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\RegisterRequest.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class RegisterRequest {
+    private String username;
+    private String email;
+    private String password;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\application\AuthenticationService.java
+============================================================
+
+package com.bsuir.book_store.users.application;
+
+import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
+import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
+import com.bsuir.book_store.users.api.dto.RegisterRequest;
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenticationService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthenticationResponse register(RegisterRequest request) {
+        var user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.CLIENT)
+                .build();
+        userRepository.save(user);
+
+        var jwtToken = jwtService.generateToken(user);
+        return AuthenticationResponse.builder()
+                .token(jwtToken)
+                .build();
+    }
+
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+        var user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow();
+
+        var jwtToken = jwtService.generateToken(user);
+        return AuthenticationResponse.builder()
+                .token(jwtToken)
+                .build();
+    }
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\domain\User.java
+============================================================
+
+package com.bsuir.book_store.users.domain;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.users.domain.enums.Role;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.sql.Timestamp;
+import java.util.*;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "users")
+public class User implements UserDetails {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    private String contactPhone;
+    private String firstName;
+    private String lastName;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
+    @OneToMany(mappedBy = "user")
+    private List<UserAddress> addresses;
+
+    @ManyToMany
+    @JoinTable(
+            name = "wishlist_items",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "book_id")
+    )
+    private Set<Book> wishlist = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Timestamp createdAt;
+
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private Timestamp updatedAt;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(role.name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\domain\UserAddress.java
+============================================================
+
+package com.bsuir.book_store.users.domain;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.sql.Timestamp;
+import java.util.UUID;
+
+@Entity
+@Table(name = "user_addresses")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserAddress {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "address_name")
+    private String addressName;
+
+    @Column(name = "address_text", columnDefinition = "TEXT", nullable = false)
+    private String addressText;
+
+    @Column(name = "is_default")
+    private Boolean isDefault;
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\domain\enums\Role.java
+============================================================
+
+package com.bsuir.book_store.users.domain.enums;
+
+public enum Role {
+    CLIENT,
+    MANAGER
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\infrastructure\UserRepository.java
+============================================================
+
+package com.bsuir.book_store.users.infrastructure;
+
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.domain.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, UUID> {
+    Optional<User> findByUsername(String username);
+    List<User> findByRole(Role role);
+}
+
+
+============================================================
+FILE PATH: src\main\resources\application-docker.properties
+============================================================
+
+spring.datasource.url=jdbc:mysql://mysql-db:3306/book_store?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.elasticsearch.uris=http://elasticsearch:9201
+
+============================================================
+FILE PATH: src\main\resources\application-example.properties
+============================================================
+
+# =======================================
+# ????? ????????? ??????????
+# =======================================
+spring.application.name=book-store
+
+# =======================================
+# ????????? ??????????? ? ???? ??????
+# ???????? 'your_...' ?? ???? ????????? ??????
+# =======================================
+spring.datasource.url=jdbc:mysql://localhost:3306/your_database_name?useSSL=false
+spring.datasource.username=your_database_username
+spring.datasource.password=your_database_password
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# =======================================
+# ????????? JPA / HIBERNATE
+# =======================================
+# ????????? Open Session In View, ??? ???????? ?????? ????????? ??? REST API
+spring.jpa.open-in-view=false
+# ??? ????????? ?????????? 'update' ????????? Hibernate ????????????? ?????????/????????? ???????
+# ????????: ??? ?????????? ??????????? 'validate' ??? 'none'
+spring.jpa.hibernate.ddl-auto=update
+# ?????????? SQL-??????? ? ??????? (??????? ??? ???????)
+spring.jpa.show-sql=true
+
+# =======================================
+# ????????? ???????????? (JWT)
+# =======================================
+# ???????????? ???? ??????????? ????????? ???? (????????, 256-?????? Base64)
+application.security.jwt.secret-key=your_secret_jwt_key
+# ????? ????? ?????? ? ????????????? (????? - 24 ????)
+application.security.jwt.expiration=86400000
+
+# =======================================
+# ????????? ?? ?????????
+# =======================================
+# ?????? ??? ???????? ?????????, ??????? ????????? ??? ?????? ???????
+manager.password=your_secure_manager_password
+
+============================================================
+FILE PATH: src\main\resources\application.properties
+============================================================
+
+spring.application.name=book-store
+
+server.port=8081
+
+spring.datasource.url=jdbc:mysql://localhost:3306/book_store?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+spring.elasticsearch.uris=http://localhost:9201
+spring.elasticsearch.connection-timeout=10s
+spring.elasticsearch.socket-timeout=10s
+
+spring.jpa.open-in-view=false
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+application.security.jwt.secret-key=cHJldHR5aG9sbG93YWNjb3JkaW5nb3JhbmdlZ2lmdHdpc2VzdHJhbmdlc3RhaXJzdGU=
+application.security.jwt.expiration=86400000
+
+manager.password=manager
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\BookStoreApplicationTests.java
+============================================================
+
+package com.bsuir.book_store;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class BookStoreApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
+

@@ -1,5 +1,7 @@
 package com.bsuir.book_store.users.domain;
 
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.users.domain.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,9 +14,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.sql.Timestamp;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Data
 @Builder
@@ -44,6 +44,16 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @OneToMany(mappedBy = "user")
+    private List<UserAddress> addresses;
+
+    @ManyToMany
+    @JoinTable(
+            name = "wishlist_items",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "book_id")
+    )
+    private Set<Book> wishlist = new HashSet<>();
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

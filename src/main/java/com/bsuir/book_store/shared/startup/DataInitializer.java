@@ -1,6 +1,6 @@
 package com.bsuir.book_store.shared.startup;
 
-import com.bsuir.book_store.users.domain.Role;
+import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.domain.User;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
