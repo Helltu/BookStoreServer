@@ -8,6 +8,9 @@ import com.bsuir.book_store.catalog.application.ImportBookService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.shared.security.annotations.IsManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +21,14 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/catalog")
 @RequiredArgsConstructor
+@Tag(name = "Catalog", description = "Поиск книг и управление ассортиментом")
 public class CatalogController {
 
     private final ImportBookService importBookService;
     private final CatalogCommandService commandService;
     private final CatalogQueryService queryService;
 
+    @Operation(summary = "Импорт книги (Менеджер)", description = "Загрузка книги из Google Books API по ISBN")
     @PostMapping("/import")
     @IsManager
     public ResponseEntity<String> importBookFromExternalApi(@RequestBody ImportBookRequest request) {
@@ -35,11 +40,13 @@ public class CatalogController {
         return ResponseEntity.ok("Книга '" + importedBook.getTitle() + "' успешно импортирована с ID: " + importedBook.getId());
     }
 
+    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск через Elasticsearch (Название, Автор, Описание)")
     @GetMapping("/search")
     public ResponseEntity<List<BookDocument>> search(@RequestParam(required = false) String q) {
         return ResponseEntity.ok(queryService.search(q));
     }
 
+    @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")
     @PostMapping("/books")
     @IsManager
     public ResponseEntity<UUID> createBook(@RequestBody CreateBookRequest request) {

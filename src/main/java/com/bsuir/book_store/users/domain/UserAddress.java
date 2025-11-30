@@ -1,15 +1,16 @@
 package com.bsuir.book_store.users.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.sql.Timestamp;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "user_addresses")
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,24 +19,28 @@ public class UserAddress {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "address_name")
-    private String addressName;
+    private String addressName; // "Дом", "Работа"
 
-    @Column(name = "address_text", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "address_text", nullable = false)
     private String addressText;
 
     @Column(name = "is_default")
     private Boolean isDefault;
 
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private Timestamp createdAt;
+    void assignToUser(User user) {
+        this.user = user;
+    }
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private Timestamp updatedAt;
+    public void makeDefault() {
+        this.isDefault = true;
+    }
+
+    void unsetDefault() {
+        this.isDefault = false;
+    }
 }

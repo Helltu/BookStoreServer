@@ -89,7 +89,7 @@ public class Order {
     public void attachDeliveryDetails(DeliveryDetails details) {
         if (details == null) throw new DomainException("Delivery details cannot be empty");
         this.deliveryDetails = details;
-        details.setOrder(this); // Связываем двустороннюю связь
+        details.setOrder(this);
     }
 
     public void updateStatus(OrderStatus newStatus) {

@@ -25,12 +25,17 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         if (userRepository.findByRole(Role.MANAGER).isEmpty()) {
             log.info("No managers found. Creating a default manager account...");
-            User manager = User.builder()
-                    .username("manager")
-                    .email("manager@bookstore.com")
-                    .password(passwordEncoder.encode(managerPassword))
-                    .role(Role.MANAGER)
-                    .build();
+
+            User manager = User.register(
+                    "manager",
+                    "manager@bookstore.com",
+                    passwordEncoder.encode(managerPassword),
+                    Role.MANAGER,
+                    "System",
+                    "Manager",
+                    null
+            );
+
             userRepository.save(manager);
             log.info("Default manager account created with username 'manager'");
         }

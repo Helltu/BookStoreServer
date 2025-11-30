@@ -180,6 +180,21 @@ FILE PATH: pom.xml
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-spring-boot-starter</artifactId>
+			<version>0.35.0</version>
+		</dependency>
+		<dependency>
+			<groupId>dev.langchain4j</groupId>
+			<artifactId>langchain4j-open-ai</artifactId>
+			<version>0.35.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.14</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -237,6 +252,8 @@ package com.bsuir.book_store.analytics.api;
 import com.bsuir.book_store.analytics.api.dto.AnalyticsResponse;
 import com.bsuir.book_store.analytics.application.AnalyticsService;
 import com.bsuir.book_store.shared.security.annotations.IsManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -246,10 +263,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
+@Tag(name = "Analytics", description = "Статистика и аналитика продаж")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
 
+    @Operation(
+            summary = "Получить дашборд",
+            description = "Возвращает сводные данные по продажам, топ книг и графики. Доступно только для роли MANAGER."
+    )
     @GetMapping
     @IsManager
     public ResponseEntity<AnalyticsResponse> getDashboard() {
@@ -424,16 +446,339 @@ public class AnalyticsService {
 }
 
 ============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\api\ChatController.java
+============================================================
+
+package com.bsuir.book_store.assistant.api;
+
+import com.bsuir.book_store.assistant.api.dto.ChatRequest;
+import com.bsuir.book_store.assistant.api.dto.ChatResponse;
+import com.bsuir.book_store.assistant.application.BookStoreAssistant;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/chat")
+@RequiredArgsConstructor
+@Tag(name = "AI Assistant", description = "Чат с умным консультантом")
+public class ChatController {
+
+    private final BookStoreAssistant assistant;
+
+    @Operation(summary = "Отправить сообщение", description = "Обработка запроса пользователя через LLM (OpenAI)")
+    @PostMapping
+    public ResponseEntity<ChatResponse> chat(
+            @RequestBody ChatRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String aiResponse = assistant.chat(userDetails.getUsername(), request.getMessage());
+
+        return ResponseEntity.ok(new ChatResponse(aiResponse));
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\api\dto\ChatRequest.java
+============================================================
+
+package com.bsuir.book_store.assistant.api.dto;
+import lombok.Data;
+
+@Data
+public class ChatRequest {
+    private String message;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\api\dto\ChatResponse.java
+============================================================
+
+package com.bsuir.book_store.assistant.api.dto;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class ChatResponse {
+    private String response;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\application\BookStoreAssistant.java
+============================================================
+
+package com.bsuir.book_store.assistant.application;
+
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
+
+public interface BookStoreAssistant {
+
+    @SystemMessage("""
+            ### РОЛЬ И ЦЕЛЬ
+            Ты — **Senior Technical Consultant** в книжном магазине "BookStore".
+            Твоя специализация — техническая литература (программирование, DevOps, Data Science, менеджмент в IT).
+            Твоя цель — не просто найти книгу, а решить проблему пользователя, подобрав наиболее релевантную литературу.
+            
+            ### КОНТЕКСТ И ЯЗЫКОВОЙ БАРЬЕР
+            1. **Входящий язык:** Пользователи обращаются к тебе на **русском языке**.
+            2. **Данные магазина:** База данных книг (названия, метаданные) ведется на **английском языке**.
+            3. **Твоя супер-сила:** Ты работаешь как "интеллектуальный мост":
+               - Шаг 1: Анализируешь запрос пользователя на русском.
+               - Шаг 2: Выделяешь ключевые технические термины и переводишь их на английский для использования в инструментах поиска (Tools).
+                 *Пример:* Запрос "Книги по машинному обучению для новичков" -> Поиск "Machine Learning for beginners" или "Intro to AI".
+               - Шаг 3: Получив результаты на английском, ты формируешь ответ для пользователя на русском языке.
+            
+            ### АЛГОРИТМ ОБРАБОТКИ ЗАПРОСА
+            1. Если пользователь не уверен в выборе, задай 1-2 уточняющих вопроса (уровень знаний, предпочитаемый язык программирования, конкретная задача).
+            2. Используй доступные инструменты (Tools) для поиска книг по сформированным английским ключевым словам.
+            3. Никогда не придумывай книги. Рекомендуй только то, что нашел в базе данных.
+            4. Если точного совпадения нет, попробуй расширить поиск и предложи наиболее близкие альтернативы, объяснив, почему они подходят.
+            
+            ### ПРАВИЛА ОФОРМЛЕНИЯ ОТВЕТА
+            Каждая рекомендация книги должна быть оформлена в красивом **Markdown** по следующему шаблону:
+            
+            ---
+            **📚 [Оригинальное название книги на английском]**
+            *Автор: [Имя Автора]*
+            
+            **💰 Цена:** [Цена] BYN
+            
+            **О чем эта книга:**
+            [Краткий, емкий пересказ сути книги на РУССКОМ языке. Не просто переводи аннотацию, а выдели пользу для читателя.]
+            
+            **Почему я рекомендую:**
+            [Твой комментарий эксперта: почему эта книга подходит под конкретный запрос пользователя.]
+            ---
+            
+            ### ВАЖНЫЕ УКАЗАНИЯ
+            - **Валюта:** Все цены должны быть указаны строго в **BYN**. Если инструмент возвращает цену в другой валюте, конвертируй её (или указывай как есть, если конвертация невозможна, но с пометкой).
+            - **Терминология:** Используй профессиональный, но понятный сленг (фичи, деплой, бэкенд), если это уместно, но объясняй сложные концепции новичкам.
+            - **Оригинальные названия:** Названия книг всегда оставляй на английском (так их легче гуглить или найти на полке), но описание переводи.
+            - **Вежливость:** Будь дружелюбен, используй эмодзи (умеренно), чтобы оживить диалог.
+            
+            ### ПРИМЕРЫ ПОВЕДЕНИЯ
+            User: "Посоветуй что-то по Джаве для опытных."
+            Thought: Пользователь хочет Advanced Java. Ищу: "Java Advanced", "Java Concurrency", "Java Performance".
+            Response: (Выдаешь список книг с русским описанием преимуществ, например "Effective Java").
+            
+            User: "Есть книги про Кубернетес?"
+            Thought: Ищу "Kubernetes", "K8s", "Cloud Native".
+            Response: (Список книг с ценами в BYN).
+            """)
+    String chat(@V("username") String username, @UserMessage String userMessage);
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\infrastructure\config\AssistantConfig.java
+============================================================
+
+package com.bsuir.book_store.assistant.infrastructure.config;
+
+import com.bsuir.book_store.assistant.application.BookStoreAssistant;
+import com.bsuir.book_store.assistant.infrastructure.tools.CatalogAiTools;
+import com.bsuir.book_store.assistant.infrastructure.tools.OrderAiTools;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.AiServices;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.Duration;
+
+@Configuration
+public class AssistantConfig {
+
+    @Bean
+    public ChatLanguageModel chatLanguageModel() {
+        return OpenAiChatModel.builder()
+                .baseUrl("http://langchain4j.dev/demo/openai/v1")
+                .apiKey("demo")
+                .modelName("gpt-4o-mini")
+                .timeout(Duration.ofSeconds(60))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+    }
+
+    @Bean
+    public ChatMemoryProvider chatMemoryProvider() {
+        return chatId -> MessageWindowChatMemory.withMaxMessages(10);
+    }
+
+    @Bean
+    public BookStoreAssistant bookStoreAssistant(
+            ChatLanguageModel chatLanguageModel,
+            CatalogAiTools catalogAiTools,
+            OrderAiTools orderAiTools,
+            ChatMemoryProvider chatMemoryProvider
+    ) {
+        return AiServices.builder(BookStoreAssistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemoryProvider(chatMemoryProvider)
+                .tools(catalogAiTools, orderAiTools)
+                .build();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\infrastructure\tools\CatalogAiTools.java
+============================================================
+
+package com.bsuir.book_store.assistant.infrastructure.tools;
+
+import com.bsuir.book_store.catalog.application.CatalogQueryService;
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import dev.langchain4j.agent.tool.Tool;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class CatalogAiTools {
+
+    private final CatalogQueryService catalogQueryService;
+
+    @Tool("""
+          Основной инструмент для поиска книг. Используй его первым при любом запросе литературы.
+          
+          ВАЖНЫЕ ПРАВИЛА ВЫЗОВА:
+          1. ПЕРЕВОД: База данных содержит книги ТОЛЬКО на английском языке.
+             Если запрос пользователя на русском (например: "книги по многопоточности в Java"),
+             ты ОБЯЗАН перевести суть в английские ключевые слова (например: "Java Concurrency" или "Multithreading").
+          2. ОЧИСТКА: Убирай слова-паразиты ("посоветуй", "какие есть", "хочу почитать").
+             Оставляй только техническую суть: технологии, языки, паттерны, авторов.
+          3. КОНТЕКСТ: Если пользователь ищет "для начинающих", добавь в запрос слова "Beginner", "Intro", "Head First".
+          """)
+    public String searchBooks(String query) {
+        System.out.println("DEBUG: AI tool call searchBooks with query: '" + query + "'");
+
+        List<BookDocument> results = catalogQueryService.search(query);
+
+        if (results.isEmpty()) {
+            return "По запросу '" + query + "' ничего не найдено.";
+        }
+
+        return results.stream()
+                .limit(5)
+                .map(b -> String.format("ID: %s | Название: %s | Автор: %s | Цена: %s BYN | Описание: %s",
+                        b.getId(),
+                        b.getTitle(),
+                        String.join(", ", b.getAuthors()),
+                        b.getPrice(),
+                        truncate(b.getDescription(), 150)))
+                .collect(Collectors.joining("\n---\n"));
+    }
+
+    @Tool("""
+          Используй этот инструмент, когда пользователь заинтересовался КОНКРЕТНОЙ книгой из списка поиска
+          и просит рассказать о ней подробнее (содержание, полная аннотация, детали).
+          
+          АРГУМЕНТЫ:
+          - В 'titleOrId' передавай ТОЧНОЕ полное название книги на английском языке, которое ты получил из инструмента searchBooks.
+          """)
+    public String getBookDetails(String titleOrId) {
+        List<BookDocument> results = catalogQueryService.search(titleOrId);
+
+        if (results.isEmpty()) return "Книга не найдена.";
+
+        BookDocument book = results.get(0);
+        return String.format("""
+                Название: %s
+                Авторы: %s
+                Жанры: %s
+                Цена: %s BYN
+                Описание: %s
+                """,
+                book.getTitle(),
+                String.join(", ", book.getAuthors()),
+                String.join(", ", book.getGenres()),
+                book.getPrice(),
+                book.getDescription()
+        );
+    }
+
+    private String truncate(String text, int length) {
+        if (text == null) return "";
+        return text.length() > length ? text.substring(0, length) + "..." : text;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\assistant\infrastructure\tools\OrderAiTools.java
+============================================================
+
+package com.bsuir.book_store.assistant.infrastructure.tools;
+
+import com.bsuir.book_store.orders.application.OrderService;
+import com.bsuir.book_store.orders.domain.Order;
+import dev.langchain4j.agent.tool.Tool;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+@RequiredArgsConstructor
+public class OrderAiTools {
+
+    private final OrderService orderService;
+
+    @Tool("Посмотреть последние заказы текущего пользователя.")
+    public String getMyLastOrders(String username) {
+        try {
+            List<Order> orders = orderService.getMyOrders(username);
+            if (orders.isEmpty()) {
+                return "У вас пока нет заказов.";
+            }
+
+            return orders.stream()
+                    .limit(3)
+                    .map(o -> String.format("Заказ %s от %s. Статус: %s. Сумма: %s BYN",
+                            o.getOrderNumber(),
+                            o.getOrderDate(),
+                            o.getStatus(),
+                            o.getTotalCost()))
+                    .collect(Collectors.joining("\n"));
+        } catch (Exception e) {
+            return "Не удалось получить список заказов. Возможно, вы не авторизованы.";
+        }
+    }
+}
+
+============================================================
 FILE PATH: src\main\java\com\bsuir\book_store\catalog\api\CatalogController.java
 ============================================================
 
 package com.bsuir.book_store.catalog.api;
 
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
+import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
+import com.bsuir.book_store.catalog.application.ImportBookService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.shared.security.annotations.IsManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -444,16 +789,32 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/catalog")
 @RequiredArgsConstructor
+@Tag(name = "Catalog", description = "Поиск книг и управление ассортиментом")
 public class CatalogController {
 
+    private final ImportBookService importBookService;
     private final CatalogCommandService commandService;
     private final CatalogQueryService queryService;
 
+    @Operation(summary = "Импорт книги (Менеджер)", description = "Загрузка книги из Google Books API по ISBN")
+    @PostMapping("/import")
+    @IsManager
+    public ResponseEntity<String> importBookFromExternalApi(@RequestBody ImportBookRequest request) {
+        Book importedBook = importBookService.importBook(
+                request.getIsbn(),
+                request.getPrice(),
+                request.getStock()
+        );
+        return ResponseEntity.ok("Книга '" + importedBook.getTitle() + "' успешно импортирована с ID: " + importedBook.getId());
+    }
+
+    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск через Elasticsearch (Название, Автор, Описание)")
     @GetMapping("/search")
     public ResponseEntity<List<BookDocument>> search(@RequestParam(required = false) String q) {
         return ResponseEntity.ok(queryService.search(q));
     }
 
+    @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")
     @PostMapping("/books")
     @IsManager
     public ResponseEntity<UUID> createBook(@RequestBody CreateBookRequest request) {
@@ -481,6 +842,22 @@ public class CreateBookRequest {
     private int stock;
     private List<UUID> authorIds;
     private List<UUID> genreIds;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\api\dto\ImportBookRequest.java
+============================================================
+
+package com.bsuir.book_store.catalog.api.dto;
+
+import lombok.Data;
+import java.math.BigDecimal;
+
+@Data
+public class ImportBookRequest {
+    private String isbn;
+    private BigDecimal price;
+    private int stock;
 }
 
 ============================================================
@@ -549,6 +926,7 @@ import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -559,10 +937,105 @@ public class CatalogQueryService {
 
     public List<BookDocument> search(String query) {
         if (query == null || query.isBlank()) {
-            Iterable<BookDocument> all = elasticRepository.findAll();
-            return (List<BookDocument>) all;
+            List<BookDocument> result = new ArrayList<>();
+            elasticRepository.findAll().forEach(result::add);
+            return result;
         }
-        return elasticRepository.findByTitleContainingOrAuthorsContaining(query, query);
+
+        return elasticRepository.searchByComplexQuery(query);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\application\ImportBookService.java
+============================================================
+
+package com.bsuir.book_store.catalog.application;
+
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
+import com.bsuir.book_store.catalog.domain.model.Author;
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.domain.model.Genre;
+import com.bsuir.book_store.catalog.domain.model.Image;
+import com.bsuir.book_store.catalog.domain.model.ImageType;
+import com.bsuir.book_store.catalog.infrastructure.external.google.GoogleBooksClient;
+import com.bsuir.book_store.catalog.infrastructure.external.google.GoogleBooksClient.GoogleBookDto;
+import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
+import com.bsuir.book_store.catalog.infrastructure.ImageRepository;
+import com.bsuir.book_store.shared.exception.DomainException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+public class ImportBookService {
+
+    private final GoogleBooksClient googleBooksClient;
+    private final BookRepository bookRepository;
+    private final AuthorRepository authorRepository;
+    private final GenreRepository genreRepository;
+    private final ImageRepository imageRepository;
+    private final SearchSyncService searchSyncService;
+
+    @Transactional
+    public Book importBook(String isbn, BigDecimal defaultPrice, int defaultStock) {
+        if (bookRepository.existsByIsbn(isbn)) {
+            throw new DomainException("Книга с ISBN " + isbn + " уже существует в каталоге");
+        }
+
+        GoogleBookDto googleBook = googleBooksClient.fetchBookByIsbn(isbn);
+
+        Set<Author> authors = new HashSet<>();
+        if (googleBook.getAuthors() != null) {
+            for (String authorName : googleBook.getAuthors()) {
+                Author author = authorRepository.findByName(authorName)
+                        .orElseGet(() -> authorRepository.save(
+                                Author.builder().name(authorName).build()
+                        ));
+                authors.add(author);
+            }
+        }
+
+        Set<Genre> genres = new HashSet<>();
+        if (googleBook.getCategories() != null) {
+            for (String categoryName : googleBook.getCategories()) {
+                Genre genre = genreRepository.findByName(categoryName)
+                        .orElseGet(() -> genreRepository.save(
+                                Genre.builder().name(categoryName).build()
+                        ));
+                genres.add(genre);
+            }
+        }
+
+        if (googleBook.getImageLinks() != null && googleBook.getImageLinks().getThumbnail() != null) {
+            Image cover = Image.builder()
+                    .url(googleBook.getImageLinks().getThumbnail())
+                    .imageType(ImageType.COVER)
+                    .build();
+            imageRepository.save(cover);
+        }
+
+        Book book = Book.builder()
+                .title(googleBook.getTitle())
+                .description(googleBook.getDescription())
+                .isbn(isbn)
+                .cost(defaultPrice)
+                .stockQuantity(defaultStock)
+                .authors(authors)
+                .genres(genres)
+                .build();
+
+        book = bookRepository.save(book);
+        searchSyncService.syncBook(book);
+
+        return book;
     }
 }
 
@@ -742,7 +1215,6 @@ public class Book {
     @UpdateTimestamp
     private Timestamp updatedAt;
 
-
     public void reserveStock(int quantity) {
         if (quantity <= 0) throw new DomainException("Количество должно быть положительным");
         if (this.stockQuantity < quantity) {
@@ -792,7 +1264,6 @@ FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\Image.java
 
 package com.bsuir.book_store.catalog.domain.model;
 
-import com.bsuir.book_store.catalog.domain.model.ImageType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -820,6 +1291,19 @@ public class Image {
     @CreationTimestamp
     @Column(name = "created_at")
     private Timestamp createdAt;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\domain\model\ImageType.java
+============================================================
+
+package com.bsuir.book_store.catalog.domain.model;
+
+public enum ImageType {
+    COVER,
+    ILLUSTRATION,
+    AUTHOR_PHOTO,
+    LOGO
 }
 
 ============================================================
@@ -856,39 +1340,26 @@ public class Publisher {
 
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\elastic\BookElasticRepository.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\AuthorRepository.java
 ============================================================
 
-package com.bsuir.book_store.catalog.infrastructure.elastic;
-
-import com.bsuir.book_store.catalog.domain.document.BookDocument;
-import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
-import java.util.List;
-
-public interface BookElasticRepository extends ElasticsearchRepository<BookDocument, String> {
-    List<BookDocument> findByTitleContainingOrAuthorsContaining(String title, String author);
-    List<BookDocument> findByGenresIn(List<String> genres);
-}
-
-============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\AuthorRepository.java
-============================================================
-
-package com.bsuir.book_store.catalog.infrastructure.jpa;
+package com.bsuir.book_store.catalog.infrastructure;
 
 import com.bsuir.book_store.catalog.domain.model.Author;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AuthorRepository extends JpaRepository<Author, UUID> {
+    Optional<Author> findByName(String name);
 }
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\BookRepository.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\BookRepository.java
 ============================================================
 
-package com.bsuir.book_store.catalog.infrastructure.jpa;
+package com.bsuir.book_store.catalog.infrastructure;
 
 import com.bsuir.book_store.catalog.domain.model.Book;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -896,28 +1367,31 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface BookRepository extends JpaRepository<Book, UUID> {
+    boolean existsByIsbn(String isbn);
 }
 
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\GenreRepository.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\GenreRepository.java
 ============================================================
 
-package com.bsuir.book_store.catalog.infrastructure.jpa;
+package com.bsuir.book_store.catalog.infrastructure;
 
 import com.bsuir.book_store.catalog.domain.model.Genre;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface GenreRepository extends JpaRepository<Genre, UUID> {
+    Optional<Genre> findByName(String name);
 }
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\ImageRepository.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\ImageRepository.java
 ============================================================
 
-package com.bsuir.book_store.catalog.infrastructure.jpa;
+package com.bsuir.book_store.catalog.infrastructure;
 
 import com.bsuir.book_store.catalog.domain.model.Image;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -928,10 +1402,10 @@ public interface ImageRepository extends JpaRepository<Image, UUID> {
 }
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\jpa\PublisherRepository.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\PublisherRepository.java
 ============================================================
 
-package com.bsuir.book_store.catalog.infrastructure.jpa;
+package com.bsuir.book_store.catalog.infrastructure;
 
 import com.bsuir.book_store.catalog.domain.model.Publisher;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -942,11 +1416,289 @@ public interface PublisherRepository extends JpaRepository<Publisher, UUID> {
 }
 
 ============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\DelieveryDetails.java
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\elastic\BookElasticRepository.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.elastic;
+
+
+import org.springframework.data.elasticsearch.annotations.Query;
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import java.util.List;
+
+public interface BookElasticRepository extends ElasticsearchRepository<BookDocument, String> {
+    @Query("{\"multi_match\": {\"query\": \"?0\", \"fields\": [\"title^3\", \"authors^2\", \"description\"], \"fuzziness\": \"AUTO\"}}")
+    List<BookDocument> searchByComplexQuery(String query);
+    List<BookDocument> findByGenresIn(List<String> genres);
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\catalog\infrastructure\external\google\GoogleBooksClient.java
+============================================================
+
+package com.bsuir.book_store.catalog.infrastructure.external.google;
+
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class GoogleBooksClient {
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
+
+    public GoogleBookDto fetchBookByIsbn(String isbn) {
+        String url = GOOGLE_BOOKS_API_URL + isbn;
+
+        try {
+            GoogleResponse response = restTemplate.getForObject(url, GoogleResponse.class);
+
+            if (response == null || response.getItems() == null || response.getItems().isEmpty()) {
+                throw new DomainException("Книга с ISBN " + isbn + " не найдена в Google Books");
+            }
+
+            return response.getItems().get(0).getVolumeInfo();
+
+        } catch (Exception e) {
+            throw new DomainException("Ошибка при обращении к Google Books API: " + e.getMessage());
+        }
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GoogleResponse {
+        private List<Item> items;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Item {
+        private GoogleBookDto volumeInfo;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GoogleBookDto {
+        private String title;
+        private List<String> authors;
+        private String description;
+        private List<String> categories; // Это будут наши жанры
+        private List<IndustryIdentifier> industryIdentifiers;
+        private ImageLinks imageLinks;
+        private Integer pageCount;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class IndustryIdentifier {
+        private String type;
+        private String identifier;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ImageLinks {
+        private String thumbnail;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\api\OrderController.java
+============================================================
+
+package com.bsuir.book_store.orders.api;
+
+import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
+import com.bsuir.book_store.orders.application.OrderService;
+import com.bsuir.book_store.orders.domain.Order;
+import com.bsuir.book_store.orders.domain.OrderStatus;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/orders")
+@RequiredArgsConstructor
+@Tag(name = "Orders", description = "Управление заказами")
+public class OrderController {
+
+    private final OrderService orderService;
+
+    @Operation(summary = "Оформить заказ", description = "Создает заказ на основе списка книг и данных о доставке")
+    @PostMapping
+    public ResponseEntity<UUID> createOrder(
+            @RequestBody CreateOrderRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(orderService.createOrder(request, userDetails.getUsername()));
+    }
+
+    @Operation(summary = "Получить мои заказы", description = "Возвращает историю заказов текущего пользователя")
+    @GetMapping("/my")
+    public ResponseEntity<List<Order>> getMyOrders(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(orderService.getMyOrders(userDetails.getUsername()));
+    }
+
+    @Operation(summary = "Получить все заказы (Менеджер)", description = "Доступно только пользователям с ролью MANAGER")
+    @GetMapping
+    @IsManager
+    public ResponseEntity<List<Order>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrders());
+    }
+
+    @Operation(summary = "Обновить статус заказа", description = "Обновляет статус выбранного заказа на предоставленный")
+    @PatchMapping("/{id}/status")
+    @IsManager
+    public ResponseEntity<Void> updateStatus(
+            @PathVariable UUID id,
+            @RequestParam OrderStatus status
+    ) {
+        orderService.changeStatus(id, status);
+        return ResponseEntity.ok().build();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\api\dto\CreateOrderRequest.java
+============================================================
+
+package com.bsuir.book_store.orders.api.dto;
+
+import lombok.Data;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+public class CreateOrderRequest {
+    private List<ItemDto> items;
+    private DeliveryDto deliveryDetails;
+
+    @Data
+    public static class ItemDto {
+        private UUID bookId;
+        private int quantity;
+    }
+
+    @Data
+    public static class DeliveryDto {
+        private String customerName;
+        private String phone;
+        private String address;
+        private String timeSlot;
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\application\OrderService.java
+============================================================
+
+package com.bsuir.book_store.orders.application;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
+import com.bsuir.book_store.orders.domain.DeliveryDetails;
+import com.bsuir.book_store.orders.domain.Order;
+import com.bsuir.book_store.orders.domain.OrderStatus;
+import com.bsuir.book_store.orders.infrastructure.OrderRepository;
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+    private final BookRepository bookRepository;
+    private final UserRepository userRepository;
+
+    @Transactional
+    public UUID createOrder(CreateOrderRequest request, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        Order order = Order.create(user);
+
+        for (var itemRequest : request.getItems()) {
+            Book book = bookRepository.findById(itemRequest.getBookId())
+                    .orElseThrow(() -> new DomainException("Book not found: " + itemRequest.getBookId()));
+
+            book.reserveStock(itemRequest.getQuantity());
+
+            order.addItem(book, itemRequest.getQuantity());
+
+            bookRepository.save(book);
+        }
+
+        DeliveryDetails delivery = DeliveryDetails.builder()
+                .customerName(request.getDeliveryDetails().getCustomerName())
+                .contactPhone(request.getDeliveryDetails().getPhone())
+                .addressText(request.getDeliveryDetails().getAddress())
+                .deliveryTimeSlot(request.getDeliveryDetails().getTimeSlot())
+                .deliveryDate(Date.valueOf(LocalDate.now().plusDays(1))) // Простая логика даты
+                .build();
+
+        order.attachDeliveryDetails(delivery);
+
+        return orderRepository.save(order).getId();
+    }
+
+    @Transactional
+    public void changeStatus(UUID orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Order not found"));
+
+        order.updateStatus(newStatus);
+
+        orderRepository.save(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getMyOrders(String username) {
+        return orderRepository.findByUserUsernameOrderByCreatedAtDesc(username);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\DeliveryDetails.java
 ============================================================
 
 package com.bsuir.book_store.orders.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.sql.Date;
@@ -954,38 +1706,36 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "delivery_details")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DelieveryDetails {
+public class DeliveryDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "order_id")
     private UUID orderId;
 
+    @JsonIgnore
     @OneToOne
     @MapsId
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @Column(name = "customer_name")
+    @Column(name = "customer_name", nullable = false)
     private String customerName;
 
-    @Column(name = "contact_phone")
+    @Column(name = "contact_phone", nullable = false)
     private String contactPhone;
 
-    @Column(name = "address_text", columnDefinition = "TEXT")
+    @Column(name = "address_text", columnDefinition = "TEXT", nullable = false)
     private String addressText;
-
-    @Column(name = "delivery_notes", columnDefinition = "TEXT")
-    private String deliveryNotes;
-
-    @Column(name = "delivery_date")
-    private Date deliveryDate;
 
     @Column(name = "delivery_time_slot")
     private String deliveryTimeSlot;
+
+    @Column(name = "delivery_date")
+    private Date deliveryDate;
 }
 
 ============================================================
@@ -994,58 +1744,113 @@ FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\Order.java
 
 package com.bsuir.book_store.orders.domain;
 
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.domain.User;
-import com.bsuir.book_store.orders.domain.OrderStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "orders")
-@Data
-@Builder
+@Getter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "order_number", unique = true)
+    @Column(name = "order_number", unique = true, nullable = false)
     private String orderNumber;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus status;
+
+    @Column(name = "total_cost", nullable = false)
+    private BigDecimal totalCost;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems = new ArrayList<>();
+
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private DeliveryDetails deliveryDetails;
 
     @Column(name = "order_date")
     private Timestamp orderDate;
 
-    @Enumerated(EnumType.STRING)
-    private OrderStatus status;
-
-    @Column(name = "total_cost")
-    private BigDecimal totalCost;
-
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
-    private List<OrderItem> orderItems;
-
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
-    private DelieveryDetails deliveryDetails;
-
     @CreationTimestamp
-    @Column(name = "created_at")
     private Timestamp createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
     private Timestamp updatedAt;
+
+    public static Order create(User user) {
+        Order order = new Order();
+        order.id = UUID.randomUUID();
+        order.user = user;
+        order.status = OrderStatus.NEW;
+        order.orderNumber = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        order.totalCost = BigDecimal.ZERO;
+        order.orderItems = new ArrayList<>();
+        order.orderDate = Timestamp.valueOf(LocalDateTime.now());
+        return order;
+    }
+
+    public void addItem(Book book, int quantity) {
+        if (quantity <= 0) {
+            throw new DomainException("Quantity must be greater than zero");
+        }
+
+        OrderItem item = OrderItem.builder()
+                .id(UUID.randomUUID())
+                .order(this)
+                .book(book)
+                .bookTitle(book.getTitle())
+                .isbn(book.getIsbn())
+                .quantity(quantity)
+                .pricePerItem(book.getCost())
+                .build();
+
+        this.orderItems.add(item);
+        recalculateTotal();
+    }
+
+    public void attachDeliveryDetails(DeliveryDetails details) {
+        if (details == null) throw new DomainException("Delivery details cannot be empty");
+        this.deliveryDetails = details;
+        details.setOrder(this); // Связываем двустороннюю связь
+    }
+
+    public void updateStatus(OrderStatus newStatus) {
+        if (this.status == OrderStatus.DELIVERED && newStatus == OrderStatus.CANCELLED) {
+            throw new DomainException("Cannot cancel an already delivered order");
+        }
+        if (this.status == OrderStatus.CANCELLED) {
+            throw new DomainException("Cannot change status of a cancelled order");
+        }
+        this.status = newStatus;
+    }
+
+    private void recalculateTotal() {
+        this.totalCost = orderItems.stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 }
 
 ============================================================
@@ -1055,27 +1860,29 @@ FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\OrderItem.java
 package com.bsuir.book_store.orders.domain;
 
 import com.bsuir.book_store.catalog.domain.model.Book;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "order_items")
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderItem {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
 
@@ -1088,6 +1895,281 @@ public class OrderItem {
 
     @Column(name = "price_per_item")
     private BigDecimal pricePerItem;
+
+    public BigDecimal getTotalPrice() {
+        return pricePerItem.multiply(BigDecimal.valueOf(quantity));
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\domain\OrderStatus.java
+============================================================
+
+package com.bsuir.book_store.orders.domain;
+
+public enum OrderStatus {
+    NEW, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+}
+
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\orders\infrastructure\OrderRepository.java
+============================================================
+
+package com.bsuir.book_store.orders.infrastructure;
+
+import com.bsuir.book_store.orders.domain.Order;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.UUID;
+
+public interface OrderRepository extends JpaRepository<Order, UUID> {
+    List<Order> findByUserUsernameOrderByCreatedAtDesc(String username);
+    List<Order> findAllByOrderByCreatedAtDesc();
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\reviews\api\ReviewController.java
+============================================================
+
+package com.bsuir.book_store.reviews.api;
+
+import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
+import com.bsuir.book_store.reviews.application.ReviewService;
+import com.bsuir.book_store.reviews.domain.Review;
+import com.bsuir.book_store.shared.security.annotations.IsManager;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/reviews")
+@RequiredArgsConstructor
+@Tag(name = "Reviews", description = "Управление отзывами и рейтингами")
+public class ReviewController {
+
+    private final ReviewService reviewService;
+
+    @Operation(
+            summary = "Оставить отзыв",
+            description = "Добавляет отзыв к книге от имени текущего пользователя. Требуется авторизация."
+    )
+    @PostMapping
+    public ResponseEntity<UUID> addReview(
+            @RequestBody CreateReviewRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(reviewService.addReview(request, userDetails.getUsername()));
+    }
+
+    @Operation(
+            summary = "Получить отзывы книги",
+            description = "Возвращает список всех отзывов для указанной книги, отсортированных по дате."
+    )
+    @GetMapping("/book/{bookId}")
+    public ResponseEntity<List<Review>> getBookReviews(@PathVariable UUID bookId) {
+        return ResponseEntity.ok(reviewService.getReviewsForBook(bookId));
+    }
+
+    @Operation(
+            summary = "Удалить отзыв (Модерация)",
+            description = "Удаляет отзыв по ID. Доступно только для роли MANAGER."
+    )
+    @DeleteMapping("/{id}")
+    @IsManager
+    public ResponseEntity<Void> deleteReview(@PathVariable UUID id) {
+        reviewService.deleteReview(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\reviews\api\dto\CreateReviewRequest.java
+============================================================
+
+package com.bsuir.book_store.reviews.api.dto;
+
+import lombok.Data;
+import java.util.UUID;
+
+@Data
+public class CreateReviewRequest {
+    private UUID bookId;
+    private Integer rating;
+    private String text;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\reviews\application\ReviewService.java
+============================================================
+
+package com.bsuir.book_store.reviews.application;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
+import com.bsuir.book_store.reviews.domain.Review;
+import com.bsuir.book_store.reviews.infrastructure.ReviewRepository;
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class ReviewService {
+
+    private final ReviewRepository reviewRepository;
+    private final BookRepository bookRepository;
+    private final UserRepository userRepository;
+
+    @Transactional
+    public UUID addReview(CreateReviewRequest request, String username) {
+        if (reviewRepository.existsByBookIdAndUserUsername(request.getBookId(), username)) {
+            throw new DomainException("Вы уже оставили отзыв на эту книгу");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        Book book = bookRepository.findById(request.getBookId())
+                .orElseThrow(() -> new DomainException("Book not found"));
+
+        Review review = Review.leave(
+                user,
+                book,
+                request.getRating(),
+                request.getText()
+        );
+
+        return reviewRepository.save(review).getId();
+    }
+
+    @Transactional
+    public void deleteReview(UUID reviewId) {
+        if (!reviewRepository.existsById(reviewId)) {
+            throw new DomainException("Review not found");
+        }
+        reviewRepository.deleteById(reviewId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Review> getReviewsForBook(UUID bookId) {
+        return reviewRepository.findAllByBookIdOrderByCreatedAtDesc(bookId);
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\reviews\domain\Review.java
+============================================================
+
+package com.bsuir.book_store.reviews.domain;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.User;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.sql.Timestamp;
+import java.util.UUID;
+
+@Entity
+@Table(name = "reviews")
+@Getter
+@NoArgsConstructor
+public class Review {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
+
+    @Column(nullable = false)
+    private Integer rating; // 1-5
+
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String text;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private Timestamp createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
+
+    public static Review leave(User user, Book book, int rating, String text) {
+        validateRating(rating);
+        validateText(text);
+
+        Review review = new Review();
+        review.id = UUID.randomUUID();
+        review.user = user;
+        review.book = book;
+        review.rating = rating;
+        review.text = text;
+
+        return review;
+    }
+
+    public void updateContent(int newRating, String newText) {
+        validateRating(newRating);
+        validateText(newText);
+
+        this.rating = newRating;
+        this.text = newText;
+    }
+
+    private static void validateRating(int rating) {
+        if (rating < 1 || rating > 5) {
+            throw new DomainException("Рейтинг должен быть от 1 до 5");
+        }
+    }
+
+    private static void validateText(String text) {
+        if (text == null || text.isBlank()) {
+            throw new DomainException("Текст отзыва не может быть пустым");
+        }
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\reviews\infrastructure\ReviewRepository.java
+============================================================
+
+package com.bsuir.book_store.reviews.infrastructure;
+
+import com.bsuir.book_store.reviews.domain.Review;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.UUID;
+
+public interface ReviewRepository extends JpaRepository<Review, UUID> {
+    List<Review> findAllByBookIdOrderByCreatedAtDesc(UUID bookId);
+    boolean existsByBookIdAndUserUsername(UUID bookId, String username);
 }
 
 ============================================================
@@ -1130,6 +2212,43 @@ public class ApplicationConfig {
 }
 
 ============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\shared\config\OpenApiConfig.java
+============================================================
+
+package com.bsuir.book_store.shared.config;
+
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.info.Contact;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@OpenAPIDefinition(
+        info = @Info(
+                title = "Book Platform API",
+                version = "1.0.0",
+                description = "API для книжного магазина: каталог, корзина, заказы, AI-ассистент",
+                contact = @Contact(
+                        name = "BSUIR Student",
+                        email = "student@bsuir.by"
+                )
+        ),
+        security = @SecurityRequirement(name = "JWT")
+)
+@SecurityScheme(
+        name = "JWT",
+        type = SecuritySchemeType.HTTP,
+        bearerFormat = "JWT",
+        scheme = "bearer",
+        description = "Вставьте сюда ваш токен"
+)
+public class OpenApiConfig {
+}
+
+============================================================
 FILE PATH: src\main\java\com\bsuir\book_store\shared\config\SecurityConfig.java
 ============================================================
 
@@ -1139,6 +2258,7 @@ import com.bsuir.book_store.shared.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -1160,6 +2280,12 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/search").permitAll() // 2. Публичные (частично)
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -1167,30 +2293,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-}
-
-
-============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\shared\domain\ImageType.java
-============================================================
-
-package com.bsuir.book_store.shared.domain;
-
-public enum ImageType {
-    COVER,
-    ILLUSTRATION,
-    AUTHOR_PHOTO,
-    LOGO
-}
-
-============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\shared\domain\OrderStatus.java
-============================================================
-
-package com.bsuir.book_store.shared.domain;
-
-public enum OrderStatus {
-    NEW, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 }
 
 
@@ -1223,6 +2325,8 @@ package com.bsuir.book_store.shared.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -1241,6 +2345,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({jakarta.persistence.EntityNotFoundException.class})
     public ResponseEntity<Object> handleNotFoundException(Exception ex) {
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<Object> handleAccessDeniedException(Exception ex) {
+        return buildErrorResponse("Доступ запрещен: у вас нет прав для выполнения этой операции", HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)
@@ -1478,6 +2587,9 @@ import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
 import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
 import com.bsuir.book_store.users.api.dto.RegisterRequest;
 import com.bsuir.book_store.users.application.AuthenticationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -1488,10 +2600,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Регистрация и вход пользователей")
+@SecurityRequirements()
 public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
+    @Operation(summary = "Регистрация нового пользователя", description = "Создает аккаунт клиента и возвращает JWT токен")
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(
             @RequestBody RegisterRequest request
@@ -1499,6 +2614,7 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.register(request));
     }
 
+    @Operation(summary = "Аутентификация", description = "Вход по username/password и получение JWT токена")
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(
             @RequestBody AuthenticationRequest request
@@ -1507,34 +2623,6 @@ public class AuthenticationController {
     }
 }
 
-
-============================================================
-FILE PATH: src\main\java\com\bsuir\book_store\users\api\TestController.java
-============================================================
-
-package com.bsuir.book_store.users.api;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import com.bsuir.book_store.shared.security.annotations.IsManager;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/api/test")
-public class TestController {
-
-    @GetMapping("/hello-user")
-    public ResponseEntity<String> sayHelloUser() {
-        return ResponseEntity.ok("Hello, Authenticated User!");
-    }
-
-    @GetMapping("/hello-manager")
-    @IsManager
-    public ResponseEntity<String> sayHelloManager() {
-        return ResponseEntity.ok("Hello, Manager!");
-    }
-}
 
 ============================================================
 FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AuthenticationRequest.java
