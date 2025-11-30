@@ -18,9 +18,7 @@ public class CatalogAiTools {
 
     private final CatalogQueryService catalogQueryService;
 
-    // Паттерн для поиска специфических белорусских букв (ў, і, апостроф в контексте)
     private static final Pattern BELARUSIAN_PATTERN = Pattern.compile("[ўЎіІ']");
-    // Паттерн для поиска кириллицы в целом
     private static final Pattern CYRILLIC_PATTERN = Pattern.compile("\\p{IsCyrillic}");
 
     @Tool("""
@@ -44,7 +42,7 @@ public class CatalogAiTools {
         return results.stream()
                 .limit(7)
                 .map(b -> {
-                    String language = detectRealLanguage(b); // Реальное определение языка
+                    String language = detectRealLanguage(b);
                     return String.format("ID: %s | Название: %s | Автор: %s | Язык издания: %s | Цена: %s BYN | Описание: %s",
                             b.getId(),
                             b.getTitle(),
@@ -101,7 +99,6 @@ public class CatalogAiTools {
     }
 
     private String detectRealLanguage(BookDocument book) {
-        // Собираем весь доступный текст для анализа
         String textToAnalyze = (book.getTitle() + " " + book.getDescription()).toLowerCase();
 
         if (BELARUSIAN_PATTERN.matcher(textToAnalyze).find()) {

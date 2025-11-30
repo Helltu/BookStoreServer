@@ -30,7 +30,6 @@ public class CatalogCommandService {
         Set<Author> authors = new HashSet<>(authorRepository.findAllById(request.getAuthorIds()));
         Set<Genre> genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
 
-        // 2. Создаем сущность (Rich Model)
         Book book = Book.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())

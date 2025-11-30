@@ -31,7 +31,7 @@ public class Review {
     private Book book;
 
     @Column(nullable = false)
-    private Integer rating; // 1-5
+    private Integer rating;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String text;
@@ -49,7 +49,6 @@ public class Review {
         validateText(text);
 
         Review review = new Review();
-        review.id = UUID.randomUUID();
         review.user = user;
         review.book = book;
         review.rating = rating;

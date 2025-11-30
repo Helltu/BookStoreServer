@@ -31,7 +31,7 @@ public class AnalyticsService {
 
         long totalOrders = orders.size();
         BigDecimal totalRevenue = orders.stream()
-                .map(Order::getTotalCost) // В вашей сущности Order поле называется totalCost
+                .map(Order::getTotalCost)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         long totalBooksSold = orders.stream()
@@ -43,7 +43,6 @@ public class AnalyticsService {
                 ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP).doubleValue()
                 : 0.0;
 
-        // 3. График продаж по датам (Sales Over Time)
         Map<LocalDate, BigDecimal> revenueByDate = orders.stream()
                 .collect(Collectors.groupingBy(
                         order -> order.getCreatedAt().toLocalDateTime().toLocalDate(),
@@ -76,16 +75,15 @@ public class AnalyticsService {
                         .build())
                 .toList();
 
-        // 5. Топ продаваемых книг
         Map<String, Long> bookStats = allItems.stream()
                 .collect(Collectors.groupingBy(
-                        item -> item.getBookTitle(), // Используем сохраненное название
+                        item -> item.getBookTitle(),
                         Collectors.summingLong(OrderItem::getQuantity)
                 ));
 
         List<AnalyticsResponse.BookPoint> topBooks = bookStats.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .limit(5) // Топ-5
+                .limit(5)
                 .map(entry -> AnalyticsResponse.BookPoint.builder()
                         .title(entry.getKey())
                         .soldCount(entry.getValue())

@@ -24,7 +24,7 @@ public class UserAddress {
     private User user;
 
     @Column(name = "address_name")
-    private String addressName; // "Дом", "Работа"
+    private String addressName;
 
     @Column(name = "address_text", nullable = false)
     private String addressText;

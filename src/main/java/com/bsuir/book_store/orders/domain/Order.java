@@ -57,7 +57,6 @@ public class Order {
 
     public static Order create(User user) {
         Order order = new Order();
-        order.id = UUID.randomUUID();
         order.user = user;
         order.status = OrderStatus.NEW;
         order.orderNumber = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -73,7 +72,6 @@ public class Order {
         }
 
         OrderItem item = OrderItem.builder()
-                .id(UUID.randomUUID())
                 .order(this)
                 .book(book)
                 .bookTitle(book.getTitle())

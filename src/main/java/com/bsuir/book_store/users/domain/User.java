@@ -25,16 +25,9 @@ import java.util.regex.Pattern;
 @NoArgsConstructor
 public class User implements UserDetails {
 
-    // Email: стандартный паттерн
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
-
-    // Телефон: от 10 до 15 цифр, может начинаться с +
     private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[0-9]{10,15}$");
-
-    // Username: 4-20 символов, латиница, цифры, точки, подчеркивания
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._]{4,20}$");
-
-    // Пароль: минимум 8 символов, минимум 1 буква и 1 цифра
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$");
 
     @Id
@@ -45,7 +38,7 @@ public class User implements UserDetails {
     private String username;
 
     @Column(nullable = false)
-    private String password; // Хеш пароля
+    private String password;
 
     @Column(unique = true, nullable = false)
     private String email;

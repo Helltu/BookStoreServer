@@ -51,7 +51,7 @@ public class GoogleBooksClient {
         private String title;
         private List<String> authors;
         private String description;
-        private List<String> categories; // Это будут наши жанры
+        private List<String> categories;
         private List<IndustryIdentifier> industryIdentifiers;
         private ImageLinks imageLinks;
         private Integer pageCount;

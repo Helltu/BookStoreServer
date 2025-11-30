@@ -50,7 +50,7 @@ public class OrderService {
                 .contactPhone(request.getDeliveryDetails().getPhone())
                 .addressText(request.getDeliveryDetails().getAddress())
                 .deliveryTimeSlot(request.getDeliveryDetails().getTimeSlot())
-                .deliveryDate(Date.valueOf(LocalDate.now().plusDays(1))) // Простая логика даты
+                .deliveryDate(Date.valueOf(LocalDate.now().plusDays(1)))
                 .build();
 
         order.attachDeliveryDetails(delivery);

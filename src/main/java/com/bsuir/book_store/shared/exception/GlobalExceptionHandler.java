@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.toMap(
                         error -> error.getField(),
                         error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Ошибка валидации",
-                        (existing, replacement) -> existing // Если несколько ошибок на одном поле, берем первую
+                        (existing, replacement) -> existing
                 ));
 
         return buildErrorResponse("Ошибка валидации входных данных", HttpStatus.BAD_REQUEST, request, errors);
@@ -96,8 +96,6 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception occurred at {}: ", request.getRequestURI(), ex);
         return buildErrorResponse("Внутренняя ошибка сервера. Обратитесь к администратору.", HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
-
-    // --- Вспомогательные методы для сборки ответа ---
 
     private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status, HttpServletRequest request) {
         return buildErrorResponse(message, status, request, null);

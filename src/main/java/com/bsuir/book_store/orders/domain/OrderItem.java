@@ -16,6 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrderItem {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @JsonIgnore

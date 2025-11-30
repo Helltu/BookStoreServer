@@ -195,6 +195,16 @@ FILE PATH: pom.xml
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.8.14</version>
 		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -526,55 +536,63 @@ public interface BookStoreAssistant {
 
     @SystemMessage("""
             ### РОЛЬ И ЦЕЛЬ
-            Ты — **Senior Technical Consultant** в книжном магазине "BookStore".
-            Твоя специализация — техническая литература (программирование, DevOps, Data Science, менеджмент в IT).
-            Твоя цель — не просто найти книгу, а решить проблему пользователя, подобрав наиболее релевантную литературу.
-            
-            ### КОНТЕКСТ И ЯЗЫКОВОЙ БАРЬЕР
-            1. **Входящий язык:** Пользователи обращаются к тебе на **русском языке**.
-            2. **Данные магазина:** База данных книг (названия, метаданные) ведется на **английском языке**.
-            3. **Твоя супер-сила:** Ты работаешь как "интеллектуальный мост":
-               - Шаг 1: Анализируешь запрос пользователя на русском.
-               - Шаг 2: Выделяешь ключевые технические термины и переводишь их на английский для использования в инструментах поиска (Tools).
-                 *Пример:* Запрос "Книги по машинному обучению для новичков" -> Поиск "Machine Learning for beginners" или "Intro to AI".
-               - Шаг 3: Получив результаты на английском, ты формируешь ответ для пользователя на русском языке.
-            
-            ### АЛГОРИТМ ОБРАБОТКИ ЗАПРОСА
-            1. Если пользователь не уверен в выборе, задай 1-2 уточняющих вопроса (уровень знаний, предпочитаемый язык программирования, конкретная задача).
-            2. Используй доступные инструменты (Tools) для поиска книг по сформированным английским ключевым словам.
-            3. Никогда не придумывай книги. Рекомендуй только то, что нашел в базе данных.
-            4. Если точного совпадения нет, попробуй расширить поиск и предложи наиболее близкие альтернативы, объяснив, почему они подходят.
-            
+            Ты — **Главный консультант** универсального книжного магазина "BookStore".
+            В нашем каталоге представлены книги на **русском, белорусском и английском языках**.
+            Твоя цель — помочь пользователю найти идеальную книгу, независимо от того, на каком языке она написана или издана.
+
+            ### КОНТЕКСТ И ОСОБЕННОСТИ ПОИСКА
+            1. **Входящий язык:** Пользователи обычно обращаются на русском, но могут искать книги на белорусском или английском.
+            2. **База данных:** Содержит названия книг на языке издания (RU, BE, EN).
+            3. **Твоя стратегия поиска (Tools):**
+               - **Не переводи всё подряд.** Анализируй контекст.
+               - Если пользователь ищет *художественную литературу* и пишет название на русском -> ищи на русском.
+               - Если ищут *техническую литературу* (IT, наука) -> используй ключевые слова и на английском, и на русском (часто оригиналы лучше).
+               - Если ищут *белорусскую классику* -> обязательно пробуй искать на белорусском (например, "Караткевіч", "Быкаў").
+               - Если пользователь не уточнил язык книги, старайся найти варианты на языке запроса, но если есть крутой бестселлер на другом языке (особенно в IT), предложи и его.
+
+            ### АЛГОРИТМ РАБОТЫ
+            1. **Анализ:** Пойми, что ищет пользователь: конкретную книгу, жанр или решение проблемы.
+            2. **Поиск:** Сформируй поисковые запросы для Tools.
+               *Пример 1:* "Книги по Java" -> Ищи "Java", "Spring", "Java для начинающих".
+               *Пример 2:* "Вершы беларускіх паэтаў" -> Ищи "Вершы", "Багдановіч", "Паэзія".
+               *Пример 3:* "Гарри Поттер" -> Ищи "Гарри Поттер" (RU) и, возможно, "Harry Potter" (EN), если пользователь фанат оригиналов.
+            3. **Валидация:** Рекомендуй только те книги, которые реально вернулись из поиска. Не выдумывай.
+            4. **Презентация:** Расскажи о книгах на языке общения с пользователем (обычно русский), но сохраняй оригинальные названия.
+
             ### ПРАВИЛА ОФОРМЛЕНИЯ ОТВЕТА
-            Каждая рекомендация книги должна быть оформлена в красивом **Markdown** по следующему шаблону:
-            
+            Используй **Markdown** для каждой книги:
+
             ---
-            **📚 [Оригинальное название книги на английском]**
+            **📚 [Название книги так, как оно записано в базе]**
             *Автор: [Имя Автора]*
-            
+            *Язык: [Укажи язык книги: RU/BE/EN]*
+
             **💰 Цена:** [Цена] BYN
-            
+
             **О чем эта книга:**
-            [Краткий, емкий пересказ сути книги на РУССКОМ языке. Не просто переводи аннотацию, а выдели пользу для читателя.]
-            
-            **Почему я рекомендую:**
-            [Твой комментарий эксперта: почему эта книга подходит под конкретный запрос пользователя.]
+            [Краткое описание сути. Если книга на английском/белорусском, опиши её содержание на русском языке, чтобы пользователю было понятно.]
+
+            **Почему рекомендую:**
+            [Чем эта книга хороша именно для этого запроса.]
             ---
-            
+
             ### ВАЖНЫЕ УКАЗАНИЯ
-            - **Валюта:** Все цены должны быть указаны строго в **BYN**. Если инструмент возвращает цену в другой валюте, конвертируй её (или указывай как есть, если конвертация невозможна, но с пометкой).
-            - **Терминология:** Используй профессиональный, но понятный сленг (фичи, деплой, бэкенд), если это уместно, но объясняй сложные концепции новичкам.
-            - **Оригинальные названия:** Названия книг всегда оставляй на английском (так их легче гуглить или найти на полке), но описание переводи.
-            - **Вежливость:** Будь дружелюбен, используй эмодзи (умеренно), чтобы оживить диалог.
-            
-            ### ПРИМЕРЫ ПОВЕДЕНИЯ
-            User: "Посоветуй что-то по Джаве для опытных."
-            Thought: Пользователь хочет Advanced Java. Ищу: "Java Advanced", "Java Concurrency", "Java Performance".
-            Response: (Выдаешь список книг с русским описанием преимуществ, например "Effective Java").
-            
-            User: "Есть книги про Кубернетес?"
-            Thought: Ищу "Kubernetes", "K8s", "Cloud Native".
-            Response: (Список книг с ценами в BYN).
+            - **Валюта:** Все цены строго в **BYN**.
+            - **Мультиязычность:** Не бойся предлагать книги на английском для IT-специалистов или на белорусском для любителей истории/культуры, даже если запрос был на русском. Но предупреждай о языке книги.
+            - **Стиль:** Вежливый, помогающий, эрудированный.
+
+            ### ПРИМЕРЫ ДИАЛОГОВ
+            User: "Нужно подтянуть английский, уровень B1."
+            Thought: Ищу учебники и адаптированную литературу. Keywords: "English Grammar", "Adapted readers", "English B1".
+            Response: (Предлагаешь "English Grammar in Use" или адаптированного "Sherlock Holmes").
+
+            User: "Хочу пачытаць нешта з класікі."
+            Thought: Запрос на белорусском/трасянке. Ищу белорусскую классику: "Каласы пад сярпом тваім", "Людзі на балоце".
+            Response: (Отвечаешь, предлагая белорусские книги с ценами в BYN).
+
+            User: "Посоветуй книгу по алгоритмам."
+            Thought: IT-литература. Ищу: "Grokking Algorithms" (EN/RU), "Algorithms" (EN), "Алгоритмы" (RU).
+            Response: (Предлагаешь "Грокаем алгоритмы" на русском и "Introduction to Algorithms" на английском, давая выбор).
             """)
     String chat(@V("username") String username, @UserMessage String userMessage);
 }
@@ -643,79 +661,115 @@ import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class CatalogAiTools {
 
     private final CatalogQueryService catalogQueryService;
 
+    // Паттерн для поиска специфических белорусских букв (ў, і, апостроф в контексте)
+    private static final Pattern BELARUSIAN_PATTERN = Pattern.compile("[ўЎіІ']");
+    // Паттерн для поиска кириллицы в целом
+    private static final Pattern CYRILLIC_PATTERN = Pattern.compile("\\p{IsCyrillic}");
+
     @Tool("""
-          Основной инструмент для поиска книг. Используй его первым при любом запросе литературы.
+          Инструмент поиска книг. 
+          Ассистент должен сам решать, на каком языке искать, исходя из контекста диалога.
           
-          ВАЖНЫЕ ПРАВИЛА ВЫЗОВА:
-          1. ПЕРЕВОД: База данных содержит книги ТОЛЬКО на английском языке.
-             Если запрос пользователя на русском (например: "книги по многопоточности в Java"),
-             ты ОБЯЗАН перевести суть в английские ключевые слова (например: "Java Concurrency" или "Multithreading").
-          2. ОЧИСТКА: Убирай слова-паразиты ("посоветуй", "какие есть", "хочу почитать").
-             Оставляй только техническую суть: технологии, языки, паттерны, авторов.
-          3. КОНТЕКСТ: Если пользователь ищет "для начинающих", добавь в запрос слова "Beginner", "Intro", "Head First".
+          РЕКОМЕНДАЦИИ ПО ИСПОЛЬЗОВАНИЮ:
+          1. Если пользователь ищет конкретную книгу на русском/белорусском -> передавай название как есть.
+          2. Если пользователь ищет IT-литературу или международный бестселлер -> попробуй найти оригинал на английском ИЛИ перевод.
+          3. Если результатов мало -> попробуй перефразировать запрос или перевести ключевые слова.
           """)
     public String searchBooks(String query) {
-        System.out.println("DEBUG: AI tool call searchBooks with query: '" + query + "'");
+        log.info("AI tool [searchBooks] called with query: '{}'", query);
 
         List<BookDocument> results = catalogQueryService.search(query);
 
         if (results.isEmpty()) {
-            return "По запросу '" + query + "' ничего не найдено.";
+            return String.format("По запросу '%s' ничего не найдено. Попробуй изменить язык запроса (например, с русского на английский) или упростить его.", query);
         }
 
         return results.stream()
-                .limit(5)
-                .map(b -> String.format("ID: %s | Название: %s | Автор: %s | Цена: %s BYN | Описание: %s",
-                        b.getId(),
-                        b.getTitle(),
-                        String.join(", ", b.getAuthors()),
-                        b.getPrice(),
-                        truncate(b.getDescription(), 150)))
+                .limit(7)
+                .map(b -> {
+                    String language = detectRealLanguage(b); // Реальное определение языка
+                    return String.format("ID: %s | Название: %s | Автор: %s | Язык издания: %s | Цена: %s BYN | Описание: %s",
+                            b.getId(),
+                            b.getTitle(),
+                            String.join(", ", b.getAuthors()),
+                            language,
+                            b.getPrice(),
+                            truncate(b.getDescription(), 120));
+                })
                 .collect(Collectors.joining("\n---\n"));
     }
 
     @Tool("""
-          Используй этот инструмент, когда пользователь заинтересовался КОНКРЕТНОЙ книгой из списка поиска
-          и просит рассказать о ней подробнее (содержание, полная аннотация, детали).
-          
-          АРГУМЕНТЫ:
-          - В 'titleOrId' передавай ТОЧНОЕ полное название книги на английском языке, которое ты получил из инструмента searchBooks.
+          Получает полные детали книги по ID (предпочтительно) или названию.
+          Вызывай этот инструмент, когда нужно дать развернутый ответ о конкретной книге.
           """)
-    public String getBookDetails(String titleOrId) {
-        List<BookDocument> results = catalogQueryService.search(titleOrId);
+    public String getBookDetails(String idOrTitle) {
+        log.info("AI tool [getBookDetails] called with: '{}'", idOrTitle);
 
-        if (results.isEmpty()) return "Книга не найдена.";
+        List<BookDocument> results = catalogQueryService.search(idOrTitle);
+
+        if (results.isEmpty()) {
+            return "Книга не найдена. Проверь ID.";
+        }
 
         BookDocument book = results.get(0);
+        String language = detectRealLanguage(book);
+
         return String.format("""
+                --- ПОДРОБНАЯ ИНФОРМАЦИЯ ---
+                ID: %s
                 Название: %s
-                Авторы: %s
+                Автор(ы): %s
                 Жанры: %s
+                Язык издания: %s
                 Цена: %s BYN
-                Описание: %s
+                
+                Полная аннотация:
+                %s
+                ----------------------------
                 """,
+                book.getId(),
                 book.getTitle(),
                 String.join(", ", book.getAuthors()),
                 String.join(", ", book.getGenres()),
+                language,
                 book.getPrice(),
                 book.getDescription()
         );
     }
 
     private String truncate(String text, int length) {
-        if (text == null) return "";
+        if (text == null || text.isBlank()) return "Без описания";
         return text.length() > length ? text.substring(0, length) + "..." : text;
+    }
+
+    private String detectRealLanguage(BookDocument book) {
+        // Собираем весь доступный текст для анализа
+        String textToAnalyze = (book.getTitle() + " " + book.getDescription()).toLowerCase();
+
+        if (BELARUSIAN_PATTERN.matcher(textToAnalyze).find()) {
+            return "BELARUSIAN (BY)";
+        }
+
+        if (CYRILLIC_PATTERN.matcher(textToAnalyze).find()) {
+            return "RUSSIAN (RU)";
+        }
+
+        return "ENGLISH (EN)";
     }
 }
 
@@ -1801,7 +1855,6 @@ public class Order {
 
     public static Order create(User user) {
         Order order = new Order();
-        order.id = UUID.randomUUID();
         order.user = user;
         order.status = OrderStatus.NEW;
         order.orderNumber = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -1817,7 +1870,6 @@ public class Order {
         }
 
         OrderItem item = OrderItem.builder()
-                .id(UUID.randomUUID())
                 .order(this)
                 .book(book)
                 .bookTitle(book.getTitle())
@@ -1833,7 +1885,7 @@ public class Order {
     public void attachDeliveryDetails(DeliveryDetails details) {
         if (details == null) throw new DomainException("Delivery details cannot be empty");
         this.deliveryDetails = details;
-        details.setOrder(this); // Связываем двустороннюю связь
+        details.setOrder(this);
     }
 
     public void updateStatus(OrderStatus newStatus) {
@@ -2323,47 +2375,120 @@ FILE PATH: src\main\java\com\bsuir\book_store\shared\exception\GlobalExceptionHa
 
 package com.bsuir.book_store.shared.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Object> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        return buildErrorResponse("Неверный логин или пароль", HttpStatus.UNAUTHORIZED, request);
+    }
+
     @ExceptionHandler(DomainException.class)
-    public ResponseEntity<Object> handleDomainException(DomainException ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    public ResponseEntity<Object> handleDomainException(DomainException ex, HttpServletRequest request) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        error -> error.getField(),
+                        error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Ошибка валидации",
+                        (existing, replacement) -> existing // Если несколько ошибок на одном поле, берем первую
+                ));
+
+        return buildErrorResponse("Ошибка валидации входных данных", HttpStatus.BAD_REQUEST, request, errors);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Object> handleJsonErrors(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return buildErrorResponse("Некорректный формат JSON или ошибка десериализации", HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = String.format("Параметр '%s' имеет неверный формат. Ожидался тип: %s",
+                ex.getName(), ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+        return buildErrorResponse(message, HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Object> handleMissingParams(MissingServletRequestParameterException ex, HttpServletRequest request) {
+        return buildErrorResponse("Отсутствует обязательный параметр запроса: " + ex.getParameterName(), HttpStatus.BAD_REQUEST, request);
     }
 
     @ExceptionHandler({jakarta.persistence.EntityNotFoundException.class})
-    public ResponseEntity<Object> handleNotFoundException(Exception ex) {
-        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    public ResponseEntity<Object> handleNotFoundException(Exception ex, HttpServletRequest request) {
+        return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Object> handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
+        return buildErrorResponse("Ресурс не найден: " + ex.getResourcePath(), HttpStatus.NOT_FOUND, request);
     }
 
     @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
-    public ResponseEntity<Object> handleAccessDeniedException(Exception ex) {
-        return buildErrorResponse("Доступ запрещен: у вас нет прав для выполнения этой операции", HttpStatus.FORBIDDEN);
+    public ResponseEntity<Object> handleAccessDeniedException(Exception ex, HttpServletRequest request) {
+        return buildErrorResponse("Доступ запрещен: у вас нет прав для выполнения этой операции", HttpStatus.FORBIDDEN, request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return buildErrorResponse("Нарушение целостности данных (возможно, запись уже существует)", HttpStatus.CONFLICT, request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return buildErrorResponse("Метод " + ex.getMethod() + " не поддерживается для этого URL", HttpStatus.METHOD_NOT_ALLOWED, request);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGlobalException(Exception ex) {
-        ex.printStackTrace();
-        return buildErrorResponse("Внутренняя ошибка сервера: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<Object> handleGlobalException(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception occurred at {}: ", request.getRequestURI(), ex);
+        return buildErrorResponse("Внутренняя ошибка сервера. Обратитесь к администратору.", HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
-    private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status) {
+    // --- Вспомогательные методы для сборки ответа ---
+
+    private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status, HttpServletRequest request) {
+        return buildErrorResponse(message, status, request, null);
+    }
+
+    private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status, HttpServletRequest request, Map<String, String> validationErrors) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", message);
+        body.put("path", request.getRequestURI());
+
+        if (validationErrors != null) {
+            body.put("validationErrors", validationErrors);
+        }
 
         return new ResponseEntity<>(body, status);
     }
@@ -2565,12 +2690,17 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         if (userRepository.findByRole(Role.MANAGER).isEmpty()) {
             log.info("No managers found. Creating a default manager account...");
-            User manager = User.builder()
-                    .username("manager")
-                    .email("manager@bookstore.com")
-                    .password(passwordEncoder.encode(managerPassword))
-                    .role(Role.MANAGER)
-                    .build();
+
+            User manager = User.register(
+                    "manager",
+                    "manager@bookstore.com",
+                    passwordEncoder.encode(managerPassword),
+                    Role.MANAGER,
+                    "System",
+                    "Manager",
+                    null
+            );
+
             userRepository.save(manager);
             log.info("Default manager account created with username 'manager'");
         }
@@ -2590,6 +2720,7 @@ import com.bsuir.book_store.users.application.AuthenticationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -2606,15 +2737,15 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
-    @Operation(summary = "Регистрация нового пользователя", description = "Создает аккаунт клиента и возвращает JWT токен")
+    @Operation(summary = "Регистрация", description = "Регистрирует нового клиента. Пароль шифруется. Email проверяется на уникальность.")
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(
-            @RequestBody RegisterRequest request
+            @RequestBody @Valid RegisterRequest request
     ) {
         return ResponseEntity.ok(authenticationService.register(request));
     }
 
-    @Operation(summary = "Аутентификация", description = "Вход по username/password и получение JWT токена")
+    @Operation(summary = "Вход в систему", description = "Проверяет логин/пароль и выдает JWT токен.")
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(
             @RequestBody AuthenticationRequest request
@@ -2623,6 +2754,94 @@ public class AuthenticationController {
     }
 }
 
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\UserController.java
+============================================================
+
+package com.bsuir.book_store.users.api;
+
+import com.bsuir.book_store.users.api.dto.AddAddressRequest;
+import com.bsuir.book_store.users.api.dto.UpdateProfileRequest;
+import com.bsuir.book_store.users.api.dto.UserProfileResponse;
+import com.bsuir.book_store.users.application.UserService;
+import com.bsuir.book_store.users.domain.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+@Tag(name = "User Profile", description = "Управление профилем пользователя")
+public class UserController {
+
+    private final UserService userService;
+
+    @Operation(summary = "Получить мой профиль")
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.getProfile(userDetails.getUsername()));
+    }
+
+    @Operation(summary = "Обновить профиль", description = "Изменить имя, фамилию или телефон")
+    @PatchMapping("/me")
+    public ResponseEntity<Void> updateProfile(
+            @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.updateProfile(userDetails.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Добавить адрес", description = "Добавляет новый адрес доставки")
+    @PostMapping("/me/addresses")
+    public ResponseEntity<Void> addAddress(
+            @RequestBody AddAddressRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.addAddress(userDetails.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AddAddressRequest.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.Data;
+
+@Data
+public class AddAddressRequest {
+    private String addressName;
+    private String addressText;
+    private Boolean isDefault;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AddressDto.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.UUID;
+
+@Data
+@Builder
+public class AddressDto {
+    private UUID id;
+    private String addressName;
+    private String addressText;
+    private Boolean isDefault;
+}
 
 ============================================================
 FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\AuthenticationRequest.java
@@ -2684,6 +2903,51 @@ public class RegisterRequest {
     private String username;
     private String email;
     private String password;
+
+    private String firstName;
+    private String lastName;
+    private String phone;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\UpdateProfileRequest.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import lombok.Data;
+
+@Data
+public class UpdateProfileRequest {
+    private String firstName;
+    private String lastName;
+    private String phone;
+}
+
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\api\dto\UserProfileResponse.java
+============================================================
+
+package com.bsuir.book_store.users.api.dto;
+
+import com.bsuir.book_store.users.domain.enums.Role;
+import lombok.Builder;
+import lombok.Data;
+
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@Builder
+public class UserProfileResponse {
+    private UUID id;
+    private String username;
+    private String email;
+    private String contactPhone;
+    private String firstName;
+    private String lastName;
+    private Role role;
+    private List<AddressDto> addresses;
 }
 
 ============================================================
@@ -2692,18 +2956,20 @@ FILE PATH: src\main\java\com\bsuir\book_store\users\application\AuthenticationSe
 
 package com.bsuir.book_store.users.application;
 
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.shared.security.JwtService;
 import com.bsuir.book_store.users.api.dto.AuthenticationRequest;
 import com.bsuir.book_store.users.api.dto.AuthenticationResponse;
 import com.bsuir.book_store.users.api.dto.RegisterRequest;
-import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
-import com.bsuir.book_store.shared.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -2714,13 +2980,27 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    @Transactional
     public AuthenticationResponse register(RegisterRequest request) {
-        var user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.CLIENT)
-                .build();
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new DomainException("Пользователь с таким логином уже существует");
+        }
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new DomainException("Пользователь с таким email уже существует");
+        }
+
+        User.validateRawPassword(request.getPassword());
+
+        User user = User.register(
+                request.getUsername(),
+                request.getEmail(),
+                passwordEncoder.encode(request.getPassword()),
+                Role.CLIENT,
+                request.getFirstName(),
+                request.getLastName(),
+                request.getPhone()
+        );
+
         userRepository.save(user);
 
         var jwtToken = jwtService.generateToken(user);
@@ -2731,21 +3011,105 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
         var user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow();
-
-        var jwtToken = jwtService.generateToken(user);
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .build();
+                .orElseThrow(() -> new DomainException("Пользователь не найден"));
+        return AuthenticationResponse.builder().token(jwtService.generateToken(user)).build();
     }
 }
 
+============================================================
+FILE PATH: src\main\java\com\bsuir\book_store\users\application\UserService.java
+============================================================
+
+package com.bsuir.book_store.users.application;
+
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.api.dto.AddAddressRequest;
+import com.bsuir.book_store.users.api.dto.AddressDto;
+import com.bsuir.book_store.users.api.dto.UpdateProfileRequest;
+import com.bsuir.book_store.users.api.dto.UserProfileResponse;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.UserAddress;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Transactional
+    public void updateProfile(String username, UpdateProfileRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        user.updateProfile(request.getFirstName(), request.getLastName(), request.getPhone());
+
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void addAddress(String username, AddAddressRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        UserAddress address = UserAddress.builder()
+                .addressName(request.getAddressName())
+                .addressText(request.getAddressText())
+                .isDefault(request.getIsDefault())
+                .build();
+
+        user.addAddress(address);
+
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String username, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        User.validateRawPassword(newPassword);
+
+        user.changePassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfile(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        List<AddressDto> addressDtos = user.getAddresses().stream()
+                .map(addr -> AddressDto.builder()
+                        .id(addr.getId())
+                        .addressName(addr.getAddressName())
+                        .addressText(addr.getAddressText())
+                        .isDefault(addr.getIsDefault())
+                        .build())
+                .toList();
+
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .contactPhone(user.getContactPhone())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .role(user.getRole())
+                .addresses(addressDtos)
+                .build();
+    }
+}
 
 ============================================================
 FILE PATH: src\main\java\com\bsuir\book_store\users\domain\User.java
@@ -2753,12 +3117,10 @@ FILE PATH: src\main\java\com\bsuir\book_store\users\domain\User.java
 
 package com.bsuir.book_store.users.domain;
 
-import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.domain.enums.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -2767,15 +3129,30 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.sql.Timestamp;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "users")
+@Getter
+@NoArgsConstructor
 public class User implements UserDetails {
+
+    // Email: стандартный паттерн
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+
+    // Телефон: от 10 до 15 цифр, может начинаться с +
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[0-9]{10,15}$");
+
+    // Username: 4-20 символов, латиница, цифры, точки, подчеркивания
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9._]{4,20}$");
+
+    // Пароль: минимум 8 символов, минимум 1 буква и 1 цифра
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$");
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -2785,28 +3162,26 @@ public class User implements UserDetails {
     private String username;
 
     @Column(nullable = false)
-    private String password;
+    private String password; // Хеш пароля
 
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(name = "contact_phone")
     private String contactPhone;
+
+    @Column(name = "first_name")
     private String firstName;
+
+    @Column(name = "last_name")
     private String lastName;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Role role;
 
-    @OneToMany(mappedBy = "user")
-    private List<UserAddress> addresses;
-
-    @ManyToMany
-    @JoinTable(
-            name = "wishlist_items",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "book_id")
-    )
-    private Set<Book> wishlist = new HashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UserAddress> addresses = new ArrayList<>();
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -2816,40 +3191,96 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Timestamp updatedAt;
 
+    public static User register(String username, String email, String encodedPassword, Role role,
+                                String firstName, String lastName, String phone) {
+        validateEmail(email);
+        validateUsername(username);
+
+        User user = new User();
+        user.username = username;
+        user.email = email;
+        user.password = encodedPassword;
+        user.role = role != null ? role : Role.CLIENT;
+        user.createdAt = Timestamp.valueOf(LocalDateTime.now());
+
+        user.updateProfile(firstName, lastName, phone);
+
+        return user;
+    }
+
+    public void updateProfile(String firstName, String lastName, String contactPhone) {
+        if (firstName != null && !firstName.isBlank()) {
+            this.firstName = firstName.trim();
+        }
+        if (lastName != null && !lastName.isBlank()) {
+            this.lastName = lastName.trim();
+        }
+        if (contactPhone != null && !contactPhone.isBlank()) {
+            validatePhone(contactPhone);
+            this.contactPhone = contactPhone.trim();
+        }
+    }
+
+    public void addAddress(UserAddress address) {
+        if (address == null) throw new DomainException("Address cannot be null");
+
+        if (Boolean.TRUE.equals(address.getIsDefault())) {
+            this.addresses.forEach(UserAddress::unsetDefault);
+        } else if (this.addresses.isEmpty()) {
+            address.makeDefault();
+        }
+
+        address.assignToUser(this);
+        this.addresses.add(address);
+    }
+
+    public void changePassword(String newEncodedPassword) {
+        if (newEncodedPassword == null || newEncodedPassword.isBlank()) {
+            throw new DomainException("Password hash cannot be empty");
+        }
+        this.password = newEncodedPassword;
+    }
+
+    public static void validateRawPassword(String rawPassword) {
+        if (rawPassword == null || !PASSWORD_PATTERN.matcher(rawPassword).matches()) {
+            throw new DomainException("Пароль должен содержать минимум 8 символов, включая буквы и цифры");
+        }
+    }
+
+    private static void validateEmail(String email) {
+        if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
+            throw new DomainException("Некорректный формат email");
+        }
+    }
+
+    private static void validateUsername(String username) {
+        if (username == null || !USERNAME_PATTERN.matcher(username).matches()) {
+            throw new DomainException("Логин должен содержать от 4 до 20 символов (латиница, цифры, '.', '_')");
+        }
+    }
+
+    private static void validatePhone(String phone) {
+        if (!PHONE_PATTERN.matcher(phone).matches()) {
+            throw new DomainException("Некорректный формат телефона. Пример: +375291234567");
+        }
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
     @Override
-    public String getPassword() {
-        return password;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public String getUsername() {
-        return username;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() { return true; }
 }
 
 ============================================================
@@ -2859,15 +3290,16 @@ FILE PATH: src\main\java\com\bsuir\book_store\users\domain\UserAddress.java
 package com.bsuir.book_store.users.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.sql.Timestamp;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.AllArgsConstructor;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "user_addresses")
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -2876,26 +3308,30 @@ public class UserAddress {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "address_name")
-    private String addressName;
+    private String addressName; // "Дом", "Работа"
 
-    @Column(name = "address_text", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "address_text", nullable = false)
     private String addressText;
 
     @Column(name = "is_default")
     private Boolean isDefault;
 
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private Timestamp createdAt;
+    void assignToUser(User user) {
+        this.user = user;
+    }
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private Timestamp updatedAt;
+    public void makeDefault() {
+        this.isDefault = true;
+    }
+
+    void unsetDefault() {
+        this.isDefault = false;
+    }
 }
 
 ============================================================
@@ -2927,9 +3363,9 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email); // Добавлено
     List<User> findByRole(Role role);
 }
-
 
 ============================================================
 FILE PATH: src\main\resources\application-docker.properties
@@ -3025,3 +3461,661 @@ class BookStoreApplicationTests {
 
 }
 
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\analytics\api\AnalyticsControllerTest.java
+============================================================
+
+package com.bsuir.book_store.analytics.api;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.orders.domain.Order;
+import com.bsuir.book_store.orders.infrastructure.OrderRepository;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+
+import java.math.BigDecimal;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class AnalyticsControllerTest {
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private BookRepository bookRepository;
+    @Autowired private JwtService jwtService;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    @MockitoBean
+    private BookElasticRepository elasticRepository;
+
+    private String managerToken;
+    private String clientToken;
+
+    @BeforeEach
+    void setUp() {
+        orderRepository.deleteAll();
+        userRepository.deleteAll();
+        bookRepository.deleteAll();
+
+        User manager = User.register("admin", "admin@test.com", passwordEncoder.encode("p"), Role.MANAGER, null, null, null);
+        userRepository.save(manager);
+        managerToken = jwtService.generateToken(manager);
+
+        User client = User.register("client", "c@test.com", passwordEncoder.encode("p"), Role.CLIENT, null, null, null);
+        userRepository.save(client);
+        clientToken = jwtService.generateToken(client);
+
+        Book book = Book.builder().title("Java Book").isbn("1").cost(new BigDecimal("100.00")).stockQuantity(10).build();
+        bookRepository.save(book);
+
+        Order order = Order.create(client);
+        order.addItem(book, 2);
+        orderRepository.save(order);
+    }
+
+    @Test
+    void managerShouldSeeDashboard() throws Exception {
+        mockMvc.perform(get("/api/analytics")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summary.totalOrders").value(1))
+                .andExpect(jsonPath("$.summary.totalRevenue").value(200.0))
+                .andExpect(jsonPath("$.summary.totalBooksSold").value(2));
+    }
+
+    @Test
+    void clientShouldNotSeeDashboard() throws Exception {
+        mockMvc.perform(get("/api/analytics")
+                        .header("Authorization", "Bearer " + clientToken))
+                .andExpect(status().isForbidden());
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\assistant\api\ChatControllerTest.java
+============================================================
+
+package com.bsuir.book_store.assistant.api;
+
+import com.bsuir.book_store.assistant.api.dto.ChatRequest;
+import com.bsuir.book_store.assistant.application.BookStoreAssistant;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class ChatControllerTest {
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private UserRepository userRepository;
+    @Autowired private JwtService jwtService;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    @MockitoBean
+    private BookStoreAssistant assistant;
+
+    @MockitoBean
+    private com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository elasticRepository;
+
+    private String token;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+        User user = User.register("user", "u@u.com", passwordEncoder.encode("p"), Role.CLIENT, null, null, null);
+        userRepository.save(user);
+        token = jwtService.generateToken(user);
+    }
+
+    @Test
+    void shouldReturnAiResponse() throws Exception {
+        when(assistant.chat(eq("user"), anyString())).thenReturn("I am AI");
+
+        ChatRequest request = new ChatRequest();
+        request.setMessage("Hello!");
+
+        mockMvc.perform(post("/api/chat")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response").value("I am AI"));
+    }
+
+    @Test
+    void shouldFailWithoutAuth() throws Exception {
+        ChatRequest request = new ChatRequest();
+        request.setMessage("Hello!");
+
+        mockMvc.perform(post("/api/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\orders\api\OrderControllerTest.java
+============================================================
+
+package com.bsuir.book_store.orders.api;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class OrderControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private BookRepository bookRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository elasticRepository;
+
+    private String token;
+    private UUID bookId;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+        bookRepository.deleteAll();
+
+        User user = User.register("client", "client@test.com", passwordEncoder.encode("pass"), Role.CLIENT, null, null, null);
+        userRepository.save(user);
+        token = jwtService.generateToken(user);
+
+        Book book = Book.builder()
+                .title("Test Book")
+                .isbn("1234567890")
+                .cost(BigDecimal.TEN)
+                .stockQuantity(10)
+                .build();
+        bookId = bookRepository.save(book).getId();
+    }
+
+    @Test
+    void shouldCreateOrderSuccessfully() throws Exception {
+        CreateOrderRequest request = new CreateOrderRequest();
+
+        CreateOrderRequest.ItemDto item = new CreateOrderRequest.ItemDto();
+        item.setBookId(bookId);
+        item.setQuantity(1);
+        request.setItems(List.of(item));
+
+        CreateOrderRequest.DeliveryDto delivery = new CreateOrderRequest.DeliveryDto();
+        delivery.setAddress("Minsk");
+        delivery.setPhone("+375000000000");
+        delivery.setCustomerName("Ivan");
+        request.setDeliveryDetails(delivery);
+
+        mockMvc.perform(post("/api/orders")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldFailWhenNotAuthenticated() throws Exception {
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\orders\domain\OrderTest.java
+============================================================
+
+package com.bsuir.book_store.orders.domain;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.User;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class OrderTest {
+
+    @Test
+    void shouldCalculateTotalCostCorrectly() {
+        User user = new User();
+        Order order = Order.create(user);
+
+        Book book1 = Book.builder().id(UUID.randomUUID()).title("Book 1").cost(new BigDecimal("10.00")).stockQuantity(10).build();
+        Book book2 = Book.builder().id(UUID.randomUUID()).title("Book 2").cost(new BigDecimal("20.00")).stockQuantity(5).build();
+
+        order.addItem(book1, 2);
+        order.addItem(book2, 1);
+
+        assertEquals(new BigDecimal("40.00"), order.getTotalCost());
+    }
+
+    @Test
+    void shouldNotAllowStatusChangeFromCancelled() {
+        User user = new User();
+        Order order = Order.create(user);
+        order.updateStatus(OrderStatus.CANCELLED);
+
+        assertThrows(DomainException.class, () -> order.updateStatus(OrderStatus.SHIPPED));
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\reviews\api\ReviewControllerTest.java
+============================================================
+
+package com.bsuir.book_store.reviews.api;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
+import com.bsuir.book_store.reviews.infrastructure.ReviewRepository;
+import com.bsuir.book_store.users.domain.User;
+import com.bsuir.book_store.users.domain.enums.Role;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.bsuir.book_store.shared.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class ReviewControllerTest {
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ReviewRepository reviewRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private BookRepository bookRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtService jwtService;
+    @Autowired private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository elasticRepository;
+
+    private String clientToken;
+    private String managerToken;
+    private UUID bookId;
+
+    @BeforeEach
+    void setUp() {
+        reviewRepository.deleteAll();
+        userRepository.deleteAll();
+        bookRepository.deleteAll();
+
+        User client = User.register("client", "c@test.com", passwordEncoder.encode("123"), Role.CLIENT, null, null, null);
+        userRepository.save(client);
+        clientToken = jwtService.generateToken(client);
+
+        User manager = User.register("manager", "m@test.com", passwordEncoder.encode("123"), Role.MANAGER, null, null, null);
+        userRepository.save(manager);
+        managerToken = jwtService.generateToken(manager);
+
+        Book book = Book.builder().title("Test Book").isbn("111").cost(BigDecimal.TEN).stockQuantity(10).build();
+        bookId = bookRepository.save(book).getId();
+    }
+
+    @Test
+    void shouldAddReviewSuccessfully() throws Exception {
+        CreateReviewRequest request = new CreateReviewRequest();
+        request.setBookId(bookId);
+        request.setRating(5);
+        request.setText("Excellent!");
+
+        mockMvc.perform(post("/api/reviews")
+                        .header("Authorization", "Bearer " + clientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldForbidDuplicateReview() throws Exception {
+        CreateReviewRequest request = new CreateReviewRequest();
+        request.setBookId(bookId);
+        request.setRating(5);
+        request.setText("First");
+
+        mockMvc.perform(post("/api/reviews")
+                        .header("Authorization", "Bearer " + clientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/reviews")
+                        .header("Authorization", "Bearer " + clientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void managerShouldDeleteReview() throws Exception {
+        User client = userRepository.findByUsername("client").get();
+        Book book = bookRepository.findById(bookId).get();
+        var review = com.bsuir.book_store.reviews.domain.Review.leave(client, book, 5, "Text");
+        UUID reviewId = reviewRepository.save(review).getId();
+
+        mockMvc.perform(delete("/api/reviews/" + reviewId)
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void clientCannotDeleteReview() throws Exception {
+        UUID randomId = UUID.randomUUID();
+        mockMvc.perform(delete("/api/reviews/" + randomId)
+                        .header("Authorization", "Bearer " + clientToken))
+                .andExpect(status().isForbidden());
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\reviews\domain\ReviewTest.java
+============================================================
+
+package com.bsuir.book_store.reviews.domain;
+
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.User;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ReviewTest {
+
+    @Test
+    void shouldCreateValidReview() {
+        Review review = Review.leave(new User(), new Book(), 5, "Great book!");
+
+        assertNotNull(review.getId());
+        assertEquals(5, review.getRating());
+        assertEquals("Great book!", review.getText());
+    }
+
+    @Test
+    void shouldFailOnInvalidRating() {
+        assertThrows(DomainException.class, () ->
+                Review.leave(new User(), new Book(), 6, "Wow")
+        );
+
+        assertThrows(DomainException.class, () ->
+                Review.leave(new User(), new Book(), 0, "Bad")
+        );
+    }
+
+    @Test
+    void shouldFailOnEmptyText() {
+        assertThrows(DomainException.class, () ->
+                Review.leave(new User(), new Book(), 5, "")
+        );
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\users\api\AuthenticationControllerTest.java
+============================================================
+
+package com.bsuir.book_store.users.api;
+
+import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import com.bsuir.book_store.users.api.dto.RegisterRequest;
+import com.bsuir.book_store.users.infrastructure.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.hasKey;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class AuthenticationControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private BookElasticRepository bookElasticRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void shouldRegisterNewUser() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setEmail("new@test.com");
+        request.setPassword("StrongPass1");
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasKey("token")));
+
+        assertTrue(userRepository.findByUsername("newuser").isPresent());
+    }
+
+    @Test
+    void shouldFailRegistrationWithWeakPassword() throws Exception {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newuser");
+        request.setEmail("new@test.com");
+        request.setPassword("123");
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest()); // Ожидаем 400
+    }
+}
+
+============================================================
+FILE PATH: src\test\java\com\bsuir\book_store\users\domain\UserTest.java
+============================================================
+
+package com.bsuir.book_store.users.domain;
+
+import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.users.domain.enums.Role;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class UserTest {
+
+    @Test
+    @DisplayName("Should register user with valid data")
+    void shouldRegisterUser() {
+        User user = User.register(
+                "testuser",
+                "test@example.com",
+                "encrypted_pass",
+                Role.CLIENT,
+                "John",
+                "Doe",
+                "+375291112233"
+        );
+
+        assertNull(user.getId());
+        assertEquals("testuser", user.getUsername());
+        assertEquals("John", user.getFirstName());
+        assertNotNull(user.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("Should throw exception for invalid email")
+    void shouldFailOnInvalidEmail() {
+        assertThrows(DomainException.class, () -> User.register(
+                "testuser",
+                "invalid-email", // Ошибка
+                "pass",
+                Role.CLIENT,
+                null, null, null
+        ));
+    }
+
+    @Test
+    @DisplayName("Should throw exception for short password")
+    void shouldFailOnShortPassword() {
+        assertThrows(DomainException.class, () -> User.validateRawPassword("123"));
+    }
+
+    @Test
+    @DisplayName("Should add address and manage default flag")
+    void shouldAddAddress() {
+        User user = new User();
+
+        user = User.register("user1", "e@e.com", "p", Role.CLIENT, null, null, null);
+
+        UserAddress addr1 = UserAddress.builder().addressName("Home").addressText("Street 1").isDefault(true).build();
+        UserAddress addr2 = UserAddress.builder().addressName("Work").addressText("Street 2").isDefault(true).build();
+
+        user.addAddress(addr1);
+        assertTrue(addr1.getIsDefault());
+
+        user.addAddress(addr2);
+
+        assertFalse(addr1.getIsDefault());
+        assertTrue(addr2.getIsDefault());
+        assertEquals(2, user.getAddresses().size());
+    }
+}
+
+============================================================
+FILE PATH: src\test\resources\application-test.properties
+============================================================
+
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=create-drop
+
+spring.elasticsearch.uris=http://localhost:9201
+spring.data.elasticsearch.repositories.enabled=false
