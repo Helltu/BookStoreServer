@@ -38,4 +38,7 @@ public class BookDocument {
 
     @Field(type = FieldType.Text, analyzer = "standard")
     private String publisher;
+
+    @Field(type = FieldType.Keyword)
+    private List<String> keywords;
 }

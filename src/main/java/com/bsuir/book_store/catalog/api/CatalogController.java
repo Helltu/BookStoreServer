@@ -65,4 +65,28 @@ public class CatalogController {
         commandService.updateBook(id, request);
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "Сгенерировать теги (Менеджер)", description = "ИИ генерирует новые ключевые слова для книги с учетом уже существующих")
+    @PostMapping("/books/{id}/keywords/generate")
+    @IsManager
+    public ResponseEntity<Void> generateKeywords(@PathVariable UUID id) {
+        commandService.generateAndAddKeywords(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Добавить ключевое слово (Менеджер)", description = "Ручное добавление одного ключевого слова")
+    @PostMapping("/books/{id}/keywords")
+    @IsManager
+    public ResponseEntity<Void> addKeyword(@PathVariable UUID id, @RequestParam String keyword) {
+        commandService.addKeyword(id, keyword);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Удалить ключевое слово (Менеджер)", description = "Удаление ключевого слова у книги")
+    @DeleteMapping("/books/{id}/keywords")
+    @IsManager
+    public ResponseEntity<Void> removeKeyword(@PathVariable UUID id, @RequestParam String keyword) {
+        commandService.removeKeyword(id, keyword);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -4,7 +4,9 @@ import com.bsuir.book_store.shared.exception.DomainException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -16,8 +18,15 @@ public class GoogleBooksClient {
     private final RestTemplate restTemplate = new RestTemplate();
     private static final String GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:";
 
+    @Value("${google.books.api.key:}")
+    private String apiKey;
+
     public GoogleBookDto fetchBookByIsbn(String isbn) {
         String url = GOOGLE_BOOKS_API_URL + isbn;
+
+        if (apiKey != null && !apiKey.isBlank()) {
+            url += "&key=" + apiKey;
+        }
 
         try {
             GoogleResponse response = restTemplate.getForObject(url, GoogleResponse.class);
@@ -28,6 +37,8 @@ public class GoogleBooksClient {
 
             return response.getItems().get(0).getVolumeInfo();
 
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            throw new DomainException("Превышен лимит запросов к Google Books API. Попробуйте позже или настройте API ключ.");
         } catch (Exception e) {
             throw new DomainException("Ошибка при обращении к Google Books API: " + e.getMessage());
         }

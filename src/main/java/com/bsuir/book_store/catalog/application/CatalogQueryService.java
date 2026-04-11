@@ -28,7 +28,7 @@ public class CatalogQueryService {
             if (criteria.getQuery() != null && !criteria.getQuery().isBlank()) {
                 b.must(m -> m.multiMatch(mm -> mm
                         .query(criteria.getQuery())
-                        .fields("title^3", "authors^2", "publisher^2", "description")
+                        .fields("title^3", "authors^2", "publisher^2", "keywords^2", "description")
                         .fuzziness("AUTO")
                 ));
             }

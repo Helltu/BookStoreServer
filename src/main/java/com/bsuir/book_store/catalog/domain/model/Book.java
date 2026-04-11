@@ -61,6 +61,11 @@ public class Book {
     )
     private Set<Genre> genres = new HashSet<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "book_keywords", joinColumns = @JoinColumn(name = "book_id"))
+    @Column(name = "keyword")
+    private Set<String> keywords = new HashSet<>();
+
     @CreationTimestamp
     private Timestamp createdAt;
 
@@ -84,7 +89,7 @@ public class Book {
         this.cost = newPrice;
     }
 
-    public void updateDetails(String title, String description, BigDecimal cost, int stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher) {
+    public void updateDetails(String title, String description, BigDecimal cost, int stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords) {
         this.title = title;
         this.description = description;
         this.updatePrice(cost);
@@ -92,5 +97,26 @@ public class Book {
         this.authors = authors;
         this.genres = genres;
         this.publisher = publisher;
+
+        if (this.keywords == null) {
+            this.keywords = new HashSet<>();
+        }
+        this.keywords.clear();
+        if (keywords != null) {
+            this.keywords.addAll(keywords);
+        }
+    }
+
+    public void addKeyword(String keyword) {
+        if (keyword != null && !keyword.isBlank()) {
+            if (this.keywords == null) this.keywords = new HashSet<>();
+            this.keywords.add(keyword.trim());
+        }
+    }
+
+    public void removeKeyword(String keyword) {
+        if (keyword != null && this.keywords != null) {
+            this.keywords.remove(keyword.trim());
+        }
     }
 }

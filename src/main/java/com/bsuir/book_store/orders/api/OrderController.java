@@ -59,11 +59,4 @@ public class OrderController {
         orderService.changeStatus(id, status);
         return ResponseEntity.ok().build();
     }
-
-    @Operation(summary = "Получить детали заказа", description = "Возвращает сущность Order со всеми вложенными данными (для менеджера)")
-    @GetMapping("/{id}")
-    @IsManager
-    public ResponseEntity<Order> getOrderById(@PathVariable UUID id) {
-        return ResponseEntity.ok(orderService.getOrderById(id));
-    }
 }

@@ -14,4 +14,5 @@ public class UpdateBookRequest {
     private List<UUID> authorIds;
     private List<UUID> genreIds;
     private UUID publisherId;
+    private List<String> keywords;
 }

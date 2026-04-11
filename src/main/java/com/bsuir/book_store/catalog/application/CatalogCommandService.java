@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ public class CatalogCommandService {
     private final GenreRepository genreRepository;
     private final PublisherRepository publisherRepository;
     private final SearchSyncService searchSyncService;
+    private final BookTaggingService bookTaggingService;
 
     @Transactional
     public UUID createBook(CreateBookRequest request) {
@@ -41,6 +43,11 @@ public class CatalogCommandService {
                     .orElseThrow(() -> new DomainException("Издательство не найдено"));
         }
 
+        Set<String> keywords = new HashSet<>();
+        if (request.getKeywords() != null && !request.getKeywords().isEmpty()) {
+            keywords.addAll(request.getKeywords());
+        }
+
         Book book = Book.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -50,6 +57,7 @@ public class CatalogCommandService {
                 .authors(authors)
                 .genres(genres)
                 .publisher(publisher)
+                .keywords(keywords)
                 .build();
 
         book = bookRepository.save(book);
@@ -73,12 +81,44 @@ public class CatalogCommandService {
                     .orElseThrow(() -> new DomainException("Издательство не найдено"));
         }
 
+        Set<String> keywords = request.getKeywords() != null ? new HashSet<>(request.getKeywords()) : new HashSet<>();
+
         book.updateDetails(
                 request.getTitle(), request.getDescription(),
                 request.getPrice(), request.getStock(),
-                authors, genres, publisher
+                authors, genres, publisher, keywords
         );
 
+        bookRepository.save(book);
+        searchSyncService.syncBook(book);
+    }
+
+    @Transactional
+    public void generateAndAddKeywords(UUID bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+
+        List<String> newTags = bookTaggingService.generateTags(book.getTitle(), book.getDescription(), book.getKeywords());
+        newTags.forEach(book::addKeyword);
+
+        bookRepository.save(book);
+        searchSyncService.syncBook(book);
+    }
+
+    @Transactional
+    public void addKeyword(UUID bookId, String keyword) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+        book.addKeyword(keyword);
+        bookRepository.save(book);
+        searchSyncService.syncBook(book);
+    }
+
+    @Transactional
+    public void removeKeyword(UUID bookId, String keyword) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+        book.removeKeyword(keyword);
         bookRepository.save(book);
         searchSyncService.syncBook(book);
     }

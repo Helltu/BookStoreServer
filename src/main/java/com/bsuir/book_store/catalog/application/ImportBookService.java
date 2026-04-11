@@ -78,6 +78,7 @@ public class ImportBookService {
                 .authors(authors)
                 .genres(genres)
                 .publisher(publisher)
+                .keywords(new HashSet<>())
                 .build();
 
         book = bookRepository.save(book);
