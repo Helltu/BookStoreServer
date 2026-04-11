@@ -85,4 +85,15 @@ public class OrderService {
     public List<Order> getMyOrders(String username) {
         return orderRepository.findByUserUsernameOrderByCreatedAtDesc(username);
     }
+
+    @Transactional(readOnly = true)
+    public Order getOrderById(UUID id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+
+        // Инициализируем коллекцию элементов для корректной JSON-сериализации
+        order.getOrderItems().size();
+
+        return order;
+    }
 }
