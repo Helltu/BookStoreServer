@@ -2,6 +2,7 @@ package com.bsuir.book_store.catalog.api;
 
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
+import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.application.ImportBookService;
@@ -51,5 +52,13 @@ public class CatalogController {
     @IsManager
     public ResponseEntity<UUID> createBook(@RequestBody CreateBookRequest request) {
         return ResponseEntity.ok(commandService.createBook(request));
+    }
+
+    @Operation(summary = "Обновление книги", description = "Изменение данных книги (кроме ISBN)")
+    @PutMapping("/books/{id}")
+    @IsManager
+    public ResponseEntity<Void> updateBook(@PathVariable UUID id, @RequestBody UpdateBookRequest request) {
+        commandService.updateBook(id, request);
+        return ResponseEntity.ok().build();
     }
 }

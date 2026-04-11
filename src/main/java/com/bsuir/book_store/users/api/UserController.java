@@ -2,6 +2,7 @@ package com.bsuir.book_store.users.api;
 
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.users.api.dto.AddAddressRequest;
+import com.bsuir.book_store.users.api.dto.ChangePasswordRequest;
 import com.bsuir.book_store.users.api.dto.UpdateProfileRequest;
 import com.bsuir.book_store.users.api.dto.UserProfileResponse;
 import com.bsuir.book_store.users.application.UserService;
@@ -38,6 +39,16 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         userService.updateProfile(userDetails.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Изменить пароль", description = "Обновляет пароль текущего пользователя")
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.changePassword(userDetails.getUsername(), request.getNewPassword());
         return ResponseEntity.ok().build();
     }
 

@@ -6,10 +6,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-public class CreateBookRequest {
+public class UpdateBookRequest {
     private String title;
     private String description;
-    private String isbn;
     private BigDecimal price;
     private int stock;
     private List<UUID> authorIds;

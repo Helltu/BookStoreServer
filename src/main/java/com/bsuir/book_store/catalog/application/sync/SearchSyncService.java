@@ -24,6 +24,7 @@ public class SearchSyncService {
                 .price(book.getCost())
                 .authors(book.getAuthors().stream().map(a -> a.getName()).toList())
                 .genres(book.getGenres().stream().map(g -> g.getName()).toList())
+                .publisher(book.getPublisher() != null ? book.getPublisher().getName() : null)
                 .build();
 
         elasticRepository.save(doc);

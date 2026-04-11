@@ -63,6 +63,14 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new DomainException("Order not found"));
 
+        if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
+            for (var item : order.getOrderItems()) {
+                Book book = item.getBook();
+                book.releaseStock(item.getQuantity());
+                bookRepository.save(book);
+            }
+        }
+
         order.updateStatus(newStatus);
 
         orderRepository.save(order);

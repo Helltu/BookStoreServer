@@ -50,6 +50,7 @@ public class GoogleBooksClient {
     public static class GoogleBookDto {
         private String title;
         private List<String> authors;
+        private String publisher;
         private String description;
         private List<String> categories;
         private List<IndustryIdentifier> industryIdentifiers;

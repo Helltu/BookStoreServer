@@ -4,14 +4,13 @@ import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
 import com.bsuir.book_store.catalog.domain.model.Author;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.domain.model.Genre;
-import com.bsuir.book_store.catalog.domain.model.Image;
-import com.bsuir.book_store.catalog.domain.model.ImageType;
+import com.bsuir.book_store.catalog.domain.model.Publisher;
 import com.bsuir.book_store.catalog.infrastructure.external.google.GoogleBooksClient;
 import com.bsuir.book_store.catalog.infrastructure.external.google.GoogleBooksClient.GoogleBookDto;
 import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
-import com.bsuir.book_store.catalog.infrastructure.ImageRepository;
+import com.bsuir.book_store.catalog.infrastructure.PublisherRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,7 +28,7 @@ public class ImportBookService {
     private final BookRepository bookRepository;
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
-    private final ImageRepository imageRepository;
+    private final PublisherRepository publisherRepository;
     private final SearchSyncService searchSyncService;
 
     @Transactional
@@ -62,12 +61,12 @@ public class ImportBookService {
             }
         }
 
-        if (googleBook.getImageLinks() != null && googleBook.getImageLinks().getThumbnail() != null) {
-            Image cover = Image.builder()
-                    .url(googleBook.getImageLinks().getThumbnail())
-                    .imageType(ImageType.COVER)
-                    .build();
-            imageRepository.save(cover);
+        Publisher publisher = null;
+        if (googleBook.getPublisher() != null && !googleBook.getPublisher().isBlank()) {
+            publisher = publisherRepository.findByName(googleBook.getPublisher())
+                    .orElseGet(() -> publisherRepository.save(
+                            Publisher.builder().name(googleBook.getPublisher()).build()
+                    ));
         }
 
         Book book = Book.builder()
@@ -78,6 +77,7 @@ public class ImportBookService {
                 .stockQuantity(defaultStock)
                 .authors(authors)
                 .genres(genres)
+                .publisher(publisher)
                 .build();
 
         book = bookRepository.save(book);

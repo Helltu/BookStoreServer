@@ -41,6 +41,10 @@ public class Book {
     @Column(nullable = false)
     private BigDecimal cost;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "publisher_id")
+    private Publisher publisher;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "book_authors",
@@ -78,5 +82,15 @@ public class Book {
     public void updatePrice(BigDecimal newPrice) {
         if (newPrice.compareTo(BigDecimal.ZERO) < 0) throw new DomainException("Цена не может быть отрицательной");
         this.cost = newPrice;
+    }
+
+    public void updateDetails(String title, String description, BigDecimal cost, int stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher) {
+        this.title = title;
+        this.description = description;
+        this.updatePrice(cost);
+        this.stockQuantity = stockQuantity;
+        this.authors = authors;
+        this.genres = genres;
+        this.publisher = publisher;
     }
 }
