@@ -1,5 +1,6 @@
 package com.bsuir.book_store.users.api;
 
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.users.api.dto.AddAddressRequest;
 import com.bsuir.book_store.users.api.dto.UpdateProfileRequest;
 import com.bsuir.book_store.users.api.dto.UserProfileResponse;
@@ -12,6 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -45,5 +49,31 @@ public class UserController {
     ) {
         userService.addAddress(userDetails.getUsername(), request);
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Добавить книгу в избранное")
+    @PostMapping("/me/wishlist/{bookId}")
+    public ResponseEntity<Void> addToWishlist(
+            @PathVariable UUID bookId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.addBookToWishlist(userDetails.getUsername(), bookId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Удалить книгу из избранного")
+    @DeleteMapping("/me/wishlist/{bookId}")
+    public ResponseEntity<Void> removeFromWishlist(
+            @PathVariable UUID bookId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.removeBookFromWishlist(userDetails.getUsername(), bookId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Получить список желаемого")
+    @GetMapping("/me/wishlist")
+    public ResponseEntity<List<Book>> getWishlist(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(userService.getWishlist(userDetails.getUsername()));
     }
 }

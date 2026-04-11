@@ -1,5 +1,6 @@
 package com.bsuir.book_store.users.domain;
 
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.domain.enums.Role;
 import jakarta.persistence.*;
@@ -15,7 +16,9 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -58,6 +61,14 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserAddress> addresses = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "user_wishlist",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "book_id")
+    )
+    private Set<Book> wishlist = new HashSet<>();
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -108,6 +119,18 @@ public class User implements UserDetails {
 
         address.assignToUser(this);
         this.addresses.add(address);
+    }
+
+    public void addToWishlist(Book book) {
+        if (book != null) {
+            this.wishlist.add(book);
+        }
+    }
+
+    public void removeFromWishlist(Book book) {
+        if (book != null) {
+            this.wishlist.remove(book);
+        }
     }
 
     public void changePassword(String newEncodedPassword) {

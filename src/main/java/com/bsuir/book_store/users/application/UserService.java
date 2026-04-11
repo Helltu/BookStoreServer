@@ -1,5 +1,7 @@
 package com.bsuir.book_store.users.application;
 
+import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.api.dto.AddAddressRequest;
 import com.bsuir.book_store.users.api.dto.AddressDto;
@@ -13,13 +15,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BookRepository bookRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -57,6 +62,35 @@ public class UserService {
 
         user.changePassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void addBookToWishlist(String username, UUID bookId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Book not found"));
+
+        user.addToWishlist(book);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void removeBookFromWishlist(String username, UUID bookId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Book not found"));
+
+        user.removeFromWishlist(book);
+        userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Book> getWishlist(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+        return new ArrayList<>(user.getWishlist());
     }
 
     @Transactional(readOnly = true)
