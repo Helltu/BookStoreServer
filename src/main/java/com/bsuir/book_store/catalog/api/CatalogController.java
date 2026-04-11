@@ -1,5 +1,6 @@
 package com.bsuir.book_store.catalog.api;
 
+import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
 import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
@@ -16,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,10 +44,11 @@ public class CatalogController {
         return ResponseEntity.ok("Книга '" + importedBook.getTitle() + "' успешно импортирована с ID: " + importedBook.getId());
     }
 
-    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск через Elasticsearch (Название, Автор, Описание)")
+    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params)")
     @GetMapping("/search")
-    public ResponseEntity<List<BookDocument>> search(@RequestParam(required = false) String q) {
-        return ResponseEntity.ok(queryService.search(q));
+    public ResponseEntity<Page<BookDocument>> search(@ModelAttribute BookSearchCriteria criteria,
+                                                     Pageable pageable) {
+        return ResponseEntity.ok(queryService.search(criteria, pageable));
     }
 
     @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")

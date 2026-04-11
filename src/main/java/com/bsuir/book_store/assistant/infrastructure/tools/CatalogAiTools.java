@@ -1,10 +1,12 @@
 package com.bsuir.book_store.assistant.infrastructure.tools;
 
+import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -33,7 +35,10 @@ public class CatalogAiTools {
     public String searchBooks(String query) {
         log.info("AI tool [searchBooks] called with query: '{}'", query);
 
-        List<BookDocument> results = catalogQueryService.search(query);
+        BookSearchCriteria criteria = new BookSearchCriteria();
+        criteria.setQuery(query);
+
+        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 7)).getContent();
 
         if (results.isEmpty()) {
             return String.format("По запросу '%s' ничего не найдено. Попробуй изменить язык запроса (например, с русского на английский) или упростить его.", query);
@@ -61,7 +66,10 @@ public class CatalogAiTools {
     public String getBookDetails(String idOrTitle) {
         log.info("AI tool [getBookDetails] called with: '{}'", idOrTitle);
 
-        List<BookDocument> results = catalogQueryService.search(idOrTitle);
+        BookSearchCriteria criteria = new BookSearchCriteria();
+        criteria.setQuery(idOrTitle);
+
+        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 1)).getContent();
 
         if (results.isEmpty()) {
             return "Книга не найдена. Проверь ID.";
