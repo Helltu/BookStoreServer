@@ -17,4 +17,10 @@ public class Genre {
 
     @Column(nullable = false)
     private String name;
+
+    public void updateDetails(String name) {
+        if (name != null && !name.isBlank()) {
+            this.name = name.trim();
+        }
+    }
 }

@@ -34,8 +34,11 @@ public class CatalogCommandService {
 
     @Transactional
     public UUID createBook(CreateBookRequest request) {
-        Set<Author> authors = new HashSet<>(authorRepository.findAllById(request.getAuthorIds()));
-        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
+        List<UUID> reqAuthorIds = request.getAuthorIds() != null ? request.getAuthorIds() : List.of();
+        List<UUID> reqGenreIds = request.getGenreIds() != null ? request.getGenreIds() : List.of();
+
+        Set<Author> authors = new HashSet<>(authorRepository.findAllById(reqAuthorIds));
+        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(reqGenreIds));
 
         Publisher publisher = null;
         if (request.getPublisherId() != null) {
@@ -72,16 +75,23 @@ public class CatalogCommandService {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
-        Set<Author> authors = new HashSet<>(authorRepository.findAllById(request.getAuthorIds()));
-        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(request.getGenreIds()));
+        Set<Author> authors = request.getAuthorIds() != null
+                ? new HashSet<>(authorRepository.findAllById(request.getAuthorIds()))
+                : book.getAuthors();
 
-        Publisher publisher = null;
+        Set<Genre> genres = request.getGenreIds() != null
+                ? new HashSet<>(genreRepository.findAllById(request.getGenreIds()))
+                : book.getGenres();
+
+        Publisher publisher = book.getPublisher();
         if (request.getPublisherId() != null) {
             publisher = publisherRepository.findById(request.getPublisherId())
                     .orElseThrow(() -> new DomainException("Издательство не найдено"));
         }
 
-        Set<String> keywords = request.getKeywords() != null ? new HashSet<>(request.getKeywords()) : new HashSet<>();
+        Set<String> keywords = request.getKeywords() != null
+                ? new HashSet<>(request.getKeywords())
+                : book.getKeywords();
 
         book.updateDetails(
                 request.getTitle(), request.getDescription(),

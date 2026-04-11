@@ -20,4 +20,13 @@ public class Author {
 
     @Column(columnDefinition = "TEXT")
     private String biography;
+
+    public void updateDetails(String name, String biography) {
+        if (name != null && !name.isBlank()) {
+            this.name = name.trim();
+        }
+        if (biography != null) {
+            this.biography = biography.trim();
+        }
+    }
 }

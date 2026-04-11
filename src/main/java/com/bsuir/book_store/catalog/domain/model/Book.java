@@ -89,20 +89,34 @@ public class Book {
         this.cost = newPrice;
     }
 
-    public void updateDetails(String title, String description, BigDecimal cost, int stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords) {
-        this.title = title;
-        this.description = description;
-        this.updatePrice(cost);
-        this.stockQuantity = stockQuantity;
-        this.authors = authors;
-        this.genres = genres;
-        this.publisher = publisher;
-
-        if (this.keywords == null) {
-            this.keywords = new HashSet<>();
+    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords) {
+        if (title != null && !title.isBlank()) {
+            this.title = title;
         }
-        this.keywords.clear();
+        if (description != null) {
+            this.description = description;
+        }
+        if (cost != null) {
+            this.updatePrice(cost);
+        }
+        if (stockQuantity != null) {
+            this.stockQuantity = stockQuantity;
+        }
+        if (authors != null) {
+            this.authors = authors;
+        }
+        if (genres != null) {
+            this.genres = genres;
+        }
+        if (publisher != null) {
+            this.publisher = publisher;
+        }
+
         if (keywords != null) {
+            if (this.keywords == null) {
+                this.keywords = new HashSet<>();
+            }
+            this.keywords.clear();
             this.keywords.addAll(keywords);
         }
     }

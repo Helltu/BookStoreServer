@@ -38,22 +38,15 @@ public class OrderService {
             Book book = bookRepository.findById(itemRequest.getBookId())
                     .orElseThrow(() -> new DomainException("Book not found: " + itemRequest.getBookId()));
 
-            book.reserveStock(itemRequest.getQuantity());
-
             order.addItem(book, itemRequest.getQuantity());
-
-            bookRepository.save(book);
         }
 
-        DeliveryDetails delivery = DeliveryDetails.builder()
-                .customerName(request.getDeliveryDetails().getCustomerName())
-                .contactPhone(request.getDeliveryDetails().getPhone())
-                .addressText(request.getDeliveryDetails().getAddress())
-                .deliveryTimeSlot(request.getDeliveryDetails().getTimeSlot())
-                .deliveryDate(Date.valueOf(LocalDate.now().plusDays(1)))
-                .build();
-
-        order.attachDeliveryDetails(delivery);
+        order.arrangeDelivery(
+                request.getDeliveryDetails().getCustomerName(),
+                request.getDeliveryDetails().getPhone(),
+                request.getDeliveryDetails().getAddress(),
+                request.getDeliveryDetails().getTimeSlot()
+        );
 
         return orderRepository.save(order).getId();
     }
@@ -62,14 +55,6 @@ public class OrderService {
     public void changeStatus(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new DomainException("Order not found"));
-
-        if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
-            for (var item : order.getOrderItems()) {
-                Book book = item.getBook();
-                book.releaseStock(item.getQuantity());
-                bookRepository.save(book);
-            }
-        }
 
         order.updateStatus(newStatus);
 

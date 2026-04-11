@@ -1,7 +1,10 @@
 package com.bsuir.book_store.catalog.application;
 
 import com.bsuir.book_store.catalog.api.dto.GenreDto;
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.domain.model.Genre;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GenreService {
     private final GenreRepository genreRepository;
+    private final BookRepository bookRepository;
+    private final SearchSyncService searchSyncService;
 
     @Transactional(readOnly = true)
     public List<Genre> getAll() {
@@ -33,8 +38,13 @@ public class GenreService {
     public Genre update(UUID id, GenreDto dto) {
         Genre genre = genreRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Жанр не найден"));
-        genre.setName(dto.getName());
-        return genreRepository.save(genre);
+        genre.updateDetails(dto.getName());
+        genre = genreRepository.save(genre);
+
+        List<Book> affectedBooks = bookRepository.findByGenres_Id(id);
+        affectedBooks.forEach(searchSyncService::syncBook);
+
+        return genre;
     }
 
     @Transactional

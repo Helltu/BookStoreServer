@@ -1,8 +1,11 @@
 package com.bsuir.book_store.catalog.application;
 
 import com.bsuir.book_store.catalog.api.dto.AuthorDto;
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
 import com.bsuir.book_store.catalog.domain.model.Author;
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthorService {
     private final AuthorRepository authorRepository;
+    private final BookRepository bookRepository;
+    private final SearchSyncService searchSyncService;
 
     @Transactional(readOnly = true)
     public List<Author> getAll() {
@@ -36,7 +41,12 @@ public class AuthorService {
                 .orElseThrow(() -> new DomainException("Автор не найден"));
         author.setName(dto.getName());
         author.setBiography(dto.getBiography());
-        return authorRepository.save(author);
+        author = authorRepository.save(author);
+
+        List<Book> affectedBooks = bookRepository.findByAuthors_Id(id);
+        affectedBooks.forEach(searchSyncService::syncBook);
+
+        return author;
     }
 
     @Transactional

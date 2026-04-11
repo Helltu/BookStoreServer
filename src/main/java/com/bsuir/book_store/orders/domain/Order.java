@@ -70,6 +70,8 @@ public class Order {
         if (quantity <= 0) {
             throw new DomainException("Quantity must be greater than zero");
         }
+        
+        book.reserveStock(quantity); // Вся магия теперь внутри!
 
         OrderItem item = OrderItem.builder()
                 .order(this)
@@ -84,8 +86,15 @@ public class Order {
         recalculateTotal();
     }
 
-    public void attachDeliveryDetails(DeliveryDetails details) {
-        if (details == null) throw new DomainException("Delivery details cannot be empty");
+    public void arrangeDelivery(String customerName, String phone, String addressText, String timeSlot) {
+        DeliveryDetails details = DeliveryDetails.builder()
+                .customerName(customerName)
+                .contactPhone(phone)
+                .addressText(addressText)
+                .deliveryTimeSlot(timeSlot)
+                .deliveryDate(java.sql.Date.valueOf(java.time.LocalDate.now().plusDays(1)))
+                .build();
+        
         this.deliveryDetails = details;
         details.setOrder(this);
     }
@@ -97,6 +106,13 @@ public class Order {
         if (this.status == OrderStatus.CANCELLED) {
             throw new DomainException("Cannot change status of a cancelled order");
         }
+        
+        if (newStatus == OrderStatus.CANCELLED && this.status != OrderStatus.CANCELLED) {
+            for (OrderItem item : this.orderItems) {
+                item.getBook().releaseStock(item.getQuantity());
+            }
+        }
+
         this.status = newStatus;
     }
 
