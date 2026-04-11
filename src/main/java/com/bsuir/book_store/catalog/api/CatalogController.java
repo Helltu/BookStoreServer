@@ -89,4 +89,12 @@ public class CatalogController {
         commandService.removeKeyword(id, keyword);
         return ResponseEntity.ok().build();
     }
+
+    @Operation(summary = "Сгенерировать описание (Менеджер)", description = "ИИ генерирует красивую аннотацию для книги на основе названия, авторов и жанров")
+    @PostMapping("/books/{id}/description/generate")
+    @IsManager
+    public ResponseEntity<Void> generateDescription(@PathVariable UUID id) {
+        commandService.generateAndSetDescription(id);
+        return ResponseEntity.ok().build();
+    }
 }

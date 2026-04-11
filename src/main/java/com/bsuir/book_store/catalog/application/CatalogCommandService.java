@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -131,5 +132,24 @@ public class CatalogCommandService {
         book.removeKeyword(keyword);
         bookRepository.save(book);
         searchSyncService.syncBook(book);
+    }
+
+    @Transactional
+    public void generateAndSetDescription(UUID bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+
+        String authors = book.getAuthors().stream().map(Author::getName).collect(Collectors.joining(", "));
+        String genres = book.getGenres().stream().map(Genre::getName).collect(Collectors.joining(", "));
+
+        String newDescription = bookTaggingService.generateDescription(book.getTitle(), authors, genres);
+
+        if (newDescription != null && !newDescription.isBlank()) {
+            book.updateDescription(newDescription);
+            bookRepository.save(book);
+            searchSyncService.syncBook(book);
+        } else {
+            throw new DomainException("Не удалось сгенерировать описание. ИИ вернул пустой ответ.");
+        }
     }
 }

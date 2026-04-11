@@ -133,4 +133,10 @@ public class Book {
             this.keywords.remove(keyword.trim());
         }
     }
+
+    public void updateDescription(String description) {
+        if (description != null && !description.isBlank()) {
+            this.description = description.trim();
+        }
+    }
 }

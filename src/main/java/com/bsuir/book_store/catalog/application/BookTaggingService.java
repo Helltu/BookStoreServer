@@ -41,4 +41,20 @@ public class BookTaggingService {
             return List.of();
         }
     }
+
+    public String generateDescription(String title, String authors, String genres) {
+        try {
+            String prompt = String.format(
+                    "Сгенерируй привлекательную, грамотную и захватывающую аннотацию (описание) для книги '%s'. " +
+                            "Авторы: %s. Жанры: %s. " +
+                            "Описание должно состоять из 2-3 абзацев. Не пиши никаких вводных фраз вроде 'Вот описание' или 'Конечно, я помогу', " +
+                            "выведи строго только сам готовый текст аннотации.",
+                    title, authors, genres
+            );
+            return chatLanguageModel.generate(prompt).trim();
+        } catch (Exception e) {
+            log.error("Ошибка при генерации описания (LLM) для книги '{}': {}", title, e.getMessage());
+            return null;
+        }
+    }
 }
