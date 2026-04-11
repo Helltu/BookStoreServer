@@ -8,12 +8,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,49 +26,74 @@ public class CatalogQueryService {
     private final ElasticsearchOperations elasticsearchOperations;
 
     public Page<BookDocument> search(BookSearchCriteria criteria, Pageable pageable) {
-        Query query = Query.of(q -> q.bool(b -> {
-            // Полнотекстовый поиск (must -> multi_match)
-            if (criteria.getQuery() != null && !criteria.getQuery().isBlank()) {
-                b.must(m -> m.multiMatch(mm -> mm
-                        .query(criteria.getQuery())
-                        .fields("title^3", "authors^2", "publisher^2", "keywords^2", "description")
-                        .fuzziness("AUTO")
-                ));
+        // 1. Очистка сортировки: строгий БЕЛЫЙ СПИСОК (Whitelist) разрешенных полей
+        List<Sort.Order> validOrders = new ArrayList<>();
+        if (pageable.getSort() != null && pageable.getSort().isSorted()) {
+            for (Sort.Order order : pageable.getSort()) {
+                String prop = order.getProperty();
+                if ("price".equals(prop)) {
+                    validOrders.add(order);
+                } else if ("title".equals(prop) || "publisher".equals(prop) || "authors".equals(prop)) {
+                    validOrders.add(order.withProperty(prop + ".keyword"));
+                }
+                // Любой другой мусор от клиента (включая "[]") будет проигнорирован
             }
+        }
+        Pageable safePageable = validOrders.isEmpty() 
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()) 
+                : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(validOrders));
 
-            // Фильтр: минимальная цена
-            if (criteria.getMinPrice() != null) {
-                b.filter(f -> f.range(r -> r.number(n -> n.field("price").gte(criteria.getMinPrice().doubleValue()))));
-            }
+        // 2. Проверка наличия фильтров
+        boolean hasQuery = criteria.getQuery() != null && !criteria.getQuery().isBlank();
+        boolean hasMinPrice = criteria.getMinPrice() != null;
+        boolean hasMaxPrice = criteria.getMaxPrice() != null;
+        boolean hasGenres = criteria.getGenres() != null && !criteria.getGenres().isEmpty();
+        boolean hasAuthors = criteria.getAuthors() != null && !criteria.getAuthors().isEmpty();
+        boolean hasPublisher = criteria.getPublisher() != null && !criteria.getPublisher().isBlank();
 
-            // Фильтр: максимальная цена
-            if (criteria.getMaxPrice() != null) {
-                b.filter(f -> f.range(r -> r.number(n -> n.field("price").lte(criteria.getMaxPrice().doubleValue()))));
-            }
+        Query query;
+        if (!hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors && !hasPublisher) {
+            // Если фильтров нет, возвращаем все документы (match_all)
+            query = Query.of(q -> q.matchAll(m -> m));
+        } else {
+            query = Query.of(q -> q.bool(b -> {
+                if (hasQuery) {
+                    b.must(m -> m.multiMatch(mm -> mm
+                            .query(criteria.getQuery())
+                            .fields("title^3", "authors^2", "publisher^2", "keywords^2", "description")
+                            .fuzziness("AUTO")
+                    ));
+                }
 
-            // Фильтр: жанры (terms)
-            if (criteria.getGenres() != null && !criteria.getGenres().isEmpty()) {
-                List<FieldValue> values = criteria.getGenres().stream().map(FieldValue::of).toList();
-                b.filter(f -> f.terms(t -> t.field("genres").terms(tt -> tt.value(values))));
-            }
+                if (hasMinPrice) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("price").gte(criteria.getMinPrice().doubleValue()))));
+                }
 
-            // Фильтр: авторы (terms)
-            if (criteria.getAuthors() != null && !criteria.getAuthors().isEmpty()) {
-                List<FieldValue> values = criteria.getAuthors().stream().map(FieldValue::of).toList();
-                b.filter(f -> f.terms(t -> t.field("authors").terms(tt -> tt.value(values))));
-            }
+                if (hasMaxPrice) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("price").lte(criteria.getMaxPrice().doubleValue()))));
+                }
 
-            // Фильтр: издательство (match)
-            if (criteria.getPublisher() != null && !criteria.getPublisher().isBlank()) {
-                b.filter(f -> f.match(m -> m.field("publisher").query(criteria.getPublisher())));
-            }
+                if (hasGenres) {
+                    List<FieldValue> values = criteria.getGenres().stream().map(FieldValue::of).toList();
+                    b.filter(f -> f.terms(t -> t.field("genres").terms(tt -> tt.value(values))));
+                }
 
-            return b;
-        }));
+                if (hasAuthors) {
+                    List<FieldValue> values = criteria.getAuthors().stream().map(FieldValue::of).toList();
+                    b.filter(f -> f.terms(t -> t.field("authors.keyword").terms(tt -> tt.value(values))));
+                }
+
+                if (hasPublisher) {
+                    b.filter(f -> f.term(t -> t.field("publisher.keyword").value(criteria.getPublisher())));
+                }
+
+                return b;
+            }));
+        }
 
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(query)
-                .withPageable(pageable)
+                .withPageable(safePageable)
                 .build();
 
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(nativeQuery, BookDocument.class);
@@ -74,6 +102,6 @@ public class CatalogQueryService {
                 .map(SearchHit::getContent)
                 .toList();
 
-        return new PageImpl<>(content, pageable, searchHits.getTotalHits());
+        return new PageImpl<>(content, safePageable, searchHits.getTotalHits());
     }
 }
