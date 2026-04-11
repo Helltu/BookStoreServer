@@ -41,7 +41,10 @@ public class BookDocument {
     )
     private List<String> authors;
 
-    @Field(type = FieldType.Keyword)
+    @MultiField(
+            mainField = @Field(type = FieldType.Text, analyzer = "standard"),
+            otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) }
+    )
     private List<String> genres;
 
     @MultiField(

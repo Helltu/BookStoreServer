@@ -61,7 +61,7 @@ public class CatalogQueryService {
                     b.must(m -> m.bool(queryBool -> queryBool
                             .should(s -> s.multiMatch(mm -> mm
                                     .query(criteria.getQuery())
-                                    .fields("title^3", "authors^2", "publisher^2", "description")
+                                    .fields("title^5", "authors^3", "description^2", "genres^1", "publisher^1")
                                     .fuzziness("AUTO")
                             ))
                             .should(s -> s.wildcard(w -> w
@@ -83,7 +83,7 @@ public class CatalogQueryService {
 
                 if (hasGenres) {
                     List<FieldValue> values = criteria.getGenres().stream().map(FieldValue::of).toList();
-                    b.filter(f -> f.terms(t -> t.field("genres").terms(tt -> tt.value(values))));
+                    b.filter(f -> f.terms(t -> t.field("genres.keyword").terms(tt -> tt.value(values))));
                 }
 
                 if (hasAuthors) {
