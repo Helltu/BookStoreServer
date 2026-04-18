@@ -58,18 +58,10 @@ public class CatalogQueryService {
         } else {
             query = Query.of(q -> q.bool(b -> {
                 if (hasQuery) {
-                    b.must(m -> m.bool(queryBool -> queryBool
-                            .should(s -> s.multiMatch(mm -> mm
-                                    .query(criteria.getQuery())
-                                    .fields("title^5", "authors^3", "description^2", "genres^1", "publisher^1")
-                                    .fuzziness("AUTO")
-                            ))
-                            .should(s -> s.wildcard(w -> w
-                                    .field("keywords")
-                                    .wildcard("*" + criteria.getQuery() + "*")
-                                    .caseInsensitive(true)
-                                    .boost(2.0f)
-                            ))
+                    b.must(m -> m.multiMatch(mm -> mm
+                            .query(criteria.getQuery())
+                            .fields("title^5", "authors^3", "keywords^2", "description^2", "genres^1", "publisher^1")
+                            .fuzziness("AUTO")
                     ));
                 }
 

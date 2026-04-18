@@ -59,9 +59,9 @@ public class BookDocument {
     )
     private List<String> keywords;
 
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Keyword, index = false)
     private String coverUrl;
 
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Keyword, index = false)
     private List<String> previewUrls;
 }
