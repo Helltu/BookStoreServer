@@ -26,6 +26,8 @@ public class SearchSyncService {
                 .genres(book.getGenres().stream().map(g -> g.getName()).toList())
                 .publisher(book.getPublisher() != null ? book.getPublisher().getName() : null)
                 .keywords(book.getKeywords().stream().toList())
+                .coverUrl(book.getCoverImage() != null ? book.getCoverImage().getUrl() : null)
+                .previewUrls(book.getPreviewImages() != null ? book.getPreviewImages().stream().map(com.bsuir.book_store.catalog.domain.model.Image::getUrl).toList() : java.util.List.of())
                 .build();
 
         elasticRepository.save(doc);

@@ -11,7 +11,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -66,6 +68,18 @@ public class Book {
     @Column(name = "keyword")
     private Set<String> keywords = new HashSet<>();
 
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "cover_image_id")
+    private Image coverImage;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinTable(
+            name = "book_previews",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "image_id")
+    )
+    private List<Image> previewImages = new ArrayList<>();
+
     @CreationTimestamp
     private Timestamp createdAt;
 
@@ -89,7 +103,7 @@ public class Book {
         this.cost = newPrice;
     }
 
-    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords) {
+    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords, Image coverImage, List<Image> previewImages) {
         if (title != null && !title.isBlank()) {
             this.title = title;
         }
@@ -118,6 +132,16 @@ public class Book {
             }
             this.keywords.clear();
             this.keywords.addAll(keywords);
+        }
+        if (coverImage != null) {
+            this.coverImage = coverImage;
+        }
+        if (previewImages != null) {
+            if (this.previewImages == null) {
+                this.previewImages = new ArrayList<>();
+            }
+            this.previewImages.clear();
+            this.previewImages.addAll(previewImages);
         }
     }
 

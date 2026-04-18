@@ -15,6 +15,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.data.domain.Page;
@@ -52,17 +54,26 @@ public class CatalogController {
     }
 
     @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")
-    @PostMapping("/books")
+    @PostMapping(value = "/books", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<UUID> createBook(@RequestBody CreateBookRequest request) {
-        return ResponseEntity.ok(commandService.createBook(request));
+    public ResponseEntity<UUID> createBook(
+            @RequestPart("request") CreateBookRequest request,
+            @RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
+            @RequestPart(value = "previewFiles", required = false) List<MultipartFile> previewFiles
+    ) {
+        return ResponseEntity.ok(commandService.createBook(request, coverFile, previewFiles));
     }
 
     @Operation(summary = "Обновление книги", description = "Изменение данных книги (кроме ISBN)")
-    @PutMapping("/books/{id}")
+    @PutMapping(value = "/books/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<Void> updateBook(@PathVariable UUID id, @RequestBody UpdateBookRequest request) {
-        commandService.updateBook(id, request);
+    public ResponseEntity<Void> updateBook(
+            @PathVariable UUID id, 
+            @RequestPart("request") UpdateBookRequest request,
+            @RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
+            @RequestPart(value = "previewFiles", required = false) List<MultipartFile> previewFiles
+    ) {
+        commandService.updateBook(id, request, coverFile, previewFiles);
         return ResponseEntity.ok().build();
     }
 

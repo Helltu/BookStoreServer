@@ -7,16 +7,21 @@ import com.bsuir.book_store.catalog.domain.model.Author;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.domain.model.Genre;
 import com.bsuir.book_store.catalog.domain.model.Publisher;
+import com.bsuir.book_store.catalog.domain.model.Image;
+import com.bsuir.book_store.catalog.domain.model.ImageType;
 import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
 import com.bsuir.book_store.catalog.infrastructure.PublisherRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.shared.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -32,9 +37,10 @@ public class CatalogCommandService {
     private final PublisherRepository publisherRepository;
     private final SearchSyncService searchSyncService;
     private final BookTaggingService bookTaggingService;
+    private final StorageService storageService;
 
     @Transactional
-    public UUID createBook(CreateBookRequest request) {
+    public UUID createBook(CreateBookRequest request, MultipartFile coverFile, List<MultipartFile> previewFiles) {
         List<UUID> reqAuthorIds = request.getAuthorIds() != null ? request.getAuthorIds() : List.of();
         List<UUID> reqGenreIds = request.getGenreIds() != null ? request.getGenreIds() : List.of();
 
@@ -52,6 +58,20 @@ public class CatalogCommandService {
             keywords.addAll(request.getKeywords());
         }
 
+        Image cover = null;
+        if (coverFile != null && !coverFile.isEmpty()) {
+            cover = Image.builder().url(storageService.store(coverFile)).imageType(ImageType.COVER).build();
+        }
+
+        List<Image> previews = new ArrayList<>();
+        if (previewFiles != null) {
+            for (MultipartFile pf : previewFiles) {
+                if (!pf.isEmpty()) {
+                    previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
+                }
+            }
+        }
+
         Book book = Book.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -62,6 +82,8 @@ public class CatalogCommandService {
                 .genres(genres)
                 .publisher(publisher)
                 .keywords(keywords)
+                .coverImage(cover)
+                .previewImages(previews)
                 .build();
 
         book = bookRepository.save(book);
@@ -72,7 +94,7 @@ public class CatalogCommandService {
     }
 
     @Transactional
-    public void updateBook(UUID id, UpdateBookRequest request) {
+    public void updateBook(UUID id, UpdateBookRequest request, MultipartFile coverFile, List<MultipartFile> previewFiles) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
@@ -94,10 +116,25 @@ public class CatalogCommandService {
                 ? new HashSet<>(request.getKeywords())
                 : book.getKeywords();
 
+        Image cover = book.getCoverImage();
+        if (coverFile != null && !coverFile.isEmpty()) {
+            cover = Image.builder().url(storageService.store(coverFile)).imageType(ImageType.COVER).build();
+        }
+
+        List<Image> previews = book.getPreviewImages();
+        if (previewFiles != null) {
+            previews = new ArrayList<>();
+            for (MultipartFile pf : previewFiles) {
+                if (!pf.isEmpty()) {
+                    previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
+                }
+            }
+        }
+
         book.updateDetails(
                 request.getTitle(), request.getDescription(),
                 request.getPrice(), request.getStock(),
-                authors, genres, publisher, keywords
+                authors, genres, publisher, keywords, cover, previews
         );
 
         bookRepository.save(book);

@@ -58,4 +58,10 @@ public class BookDocument {
             otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) }
     )
     private List<String> keywords;
+
+    @Field(type = FieldType.Keyword)
+    private String coverUrl;
+
+    @Field(type = FieldType.Keyword)
+    private List<String> previewUrls;
 }
