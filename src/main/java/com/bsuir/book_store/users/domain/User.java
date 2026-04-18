@@ -121,6 +121,13 @@ public class User implements UserDetails {
         this.addresses.add(address);
     }
 
+    public void removeAddress(UUID addressId) {
+        boolean removed = this.addresses.removeIf(a -> a.getId().equals(addressId));
+        if (!removed) {
+            throw new DomainException("Адрес не найден");
+        }
+    }
+
     public void addToWishlist(Book book) {
         if (book != null) {
             this.wishlist.add(book);

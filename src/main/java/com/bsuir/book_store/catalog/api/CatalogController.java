@@ -4,6 +4,7 @@ import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
 import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
+import com.bsuir.book_store.catalog.api.dto.KeywordRequest;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.application.ImportBookService;
@@ -53,6 +54,12 @@ public class CatalogController {
         return ResponseEntity.ok(queryService.search(criteria, pageable));
     }
 
+    @Operation(summary = "Получить книгу по ID", description = "Возвращает карточку конкретной книги")
+    @GetMapping("/books/{id}")
+    public ResponseEntity<BookDocument> getBookById(@PathVariable UUID id) {
+        return ResponseEntity.ok(queryService.getBookById(id.toString()));
+    }
+
     @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")
     @PostMapping(value = "/books", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
@@ -73,6 +80,14 @@ public class CatalogController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Удаление книги", description = "Удаляет книгу из каталога и Elasticsearch")
+    @DeleteMapping("/books/{id}")
+    @IsManager
+    public ResponseEntity<Void> deleteBook(@PathVariable UUID id) {
+        commandService.deleteBook(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Сгенерировать теги (Менеджер)", description = "ИИ генерирует новые ключевые слова для книги с учетом уже существующих")
     @PostMapping("/books/{id}/keywords/generate")
     @IsManager
@@ -84,15 +99,15 @@ public class CatalogController {
     @Operation(summary = "Добавить ключевое слово (Менеджер)", description = "Ручное добавление одного ключевого слова")
     @PostMapping("/books/{id}/keywords")
     @IsManager
-    public ResponseEntity<Void> addKeyword(@PathVariable UUID id, @RequestParam String keyword) {
-        commandService.addKeyword(id, keyword);
+    public ResponseEntity<Void> addKeyword(@PathVariable UUID id, @RequestBody KeywordRequest request) {
+        commandService.addKeyword(id, request.getKeyword());
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Удалить ключевое слово (Менеджер)", description = "Удаление ключевого слова у книги")
-    @DeleteMapping("/books/{id}/keywords")
+    @DeleteMapping("/books/{id}/keywords/{keyword}")
     @IsManager
-    public ResponseEntity<Void> removeKeyword(@PathVariable UUID id, @RequestParam String keyword) {
+    public ResponseEntity<Void> removeKeyword(@PathVariable UUID id, @PathVariable String keyword) {
         commandService.removeKeyword(id, keyword);
         return ResponseEntity.ok().build();
     }

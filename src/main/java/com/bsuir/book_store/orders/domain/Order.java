@@ -121,4 +121,11 @@ public class Order {
                 .map(OrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    public void cancelByUser() {
+        if (this.status != OrderStatus.NEW) {
+            throw new DomainException("Отменить заказ можно только пока он находится в статусе NEW");
+        }
+        this.updateStatus(OrderStatus.CANCELLED);
+    }
 }

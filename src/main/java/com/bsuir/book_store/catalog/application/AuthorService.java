@@ -7,6 +7,7 @@ import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
+import com.bsuir.book_store.shared.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,17 +21,30 @@ public class AuthorService {
     private final AuthorRepository authorRepository;
     private final BookRepository bookRepository;
     private final SearchSyncService searchSyncService;
+    private final StorageService storageService;
 
     @Transactional(readOnly = true)
     public List<Author> getAll() {
         return authorRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
+    public Author getById(UUID id) {
+        return authorRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Автор не найден"));
+    }
+
     @Transactional
     public Author create(AuthorDto dto) {
+        String photoUrl = null;
+        if (dto.getPhoto() != null && !dto.getPhoto().isEmpty()) {
+            photoUrl = storageService.store(dto.getPhoto());
+        }
+
         Author author = Author.builder()
                 .name(dto.getName())
                 .biography(dto.getBiography())
+                .photoUrl(photoUrl)
                 .build();
         return authorRepository.save(author);
     }
@@ -39,8 +53,13 @@ public class AuthorService {
     public Author update(UUID id, AuthorDto dto) {
         Author author = authorRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Автор не найден"));
-        author.setName(dto.getName());
-        author.setBiography(dto.getBiography());
+
+        String photoUrl = null;
+        if (dto.getPhoto() != null && !dto.getPhoto().isEmpty()) {
+            photoUrl = storageService.store(dto.getPhoto());
+        }
+
+        author.updateDetails(dto.getName(), dto.getBiography(), photoUrl);
         author = authorRepository.save(author);
 
         List<Book> affectedBooks = bookRepository.findByAuthors_Id(id);

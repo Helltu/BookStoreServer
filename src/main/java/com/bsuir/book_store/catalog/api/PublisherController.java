@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,17 +28,23 @@ public class PublisherController {
         return ResponseEntity.ok(publisherService.getAll());
     }
 
+    @Operation(summary = "Получить издательство по ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<Publisher> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(publisherService.getById(id));
+    }
+
     @Operation(summary = "Создать издательство")
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<Publisher> create(@RequestBody PublisherDto request) {
+    public ResponseEntity<Publisher> create(@ModelAttribute PublisherDto request) {
         return ResponseEntity.ok(publisherService.create(request));
     }
 
     @Operation(summary = "Обновить издательство")
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<Publisher> update(@PathVariable UUID id, @RequestBody PublisherDto request) {
+    public ResponseEntity<Publisher> update(@PathVariable UUID id, @ModelAttribute PublisherDto request) {
         return ResponseEntity.ok(publisherService.update(id, request));
     }
 

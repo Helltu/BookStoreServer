@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,17 +28,23 @@ public class AuthorController {
         return ResponseEntity.ok(authorService.getAll());
     }
 
+    @Operation(summary = "Получить автора по ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<Author> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(authorService.getById(id));
+    }
+
     @Operation(summary = "Создать автора")
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<Author> create(@RequestBody AuthorDto request) {
+    public ResponseEntity<Author> create(@ModelAttribute AuthorDto request) {
         return ResponseEntity.ok(authorService.create(request));
     }
 
     @Operation(summary = "Обновить автора")
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
-    public ResponseEntity<Author> update(@PathVariable UUID id, @RequestBody AuthorDto request) {
+    public ResponseEntity<Author> update(@PathVariable UUID id, @ModelAttribute AuthorDto request) {
         return ResponseEntity.ok(authorService.update(id, request));
     }
 

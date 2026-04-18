@@ -24,9 +24,15 @@ public class AnalyticsService {
     private final OrderRepository orderRepository;
 
     @Transactional(readOnly = true)
-    public AnalyticsResponse getDashboardData() {
+    public AnalyticsResponse getDashboardData(LocalDate startDate, LocalDate endDate) {
         List<Order> orders = orderRepository.findAll().stream()
                 .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
+                .filter(o -> {
+                    LocalDate orderDate = o.getCreatedAt().toLocalDateTime().toLocalDate();
+                    boolean afterStart = (startDate == null) || !orderDate.isBefore(startDate);
+                    boolean beforeEnd = (endDate == null) || !orderDate.isAfter(endDate);
+                    return afterStart && beforeEnd;
+                })
                 .toList();
 
         long totalOrders = orders.size();

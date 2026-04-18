@@ -3,6 +3,7 @@ package com.bsuir.book_store.catalog.application;
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
 import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import com.bsuir.book_store.catalog.domain.model.Author;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.domain.model.Genre;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +40,7 @@ public class CatalogCommandService {
     private final SearchSyncService searchSyncService;
     private final BookTaggingService bookTaggingService;
     private final StorageService storageService;
+    private final ElasticsearchOperations elasticsearchOperations;
 
     @Transactional
     public UUID createBook(CreateBookRequest request, MultipartFile coverFile, List<MultipartFile> previewFiles) {
@@ -188,5 +191,11 @@ public class CatalogCommandService {
         } else {
             throw new DomainException("Не удалось сгенерировать описание. ИИ вернул пустой ответ.");
         }
+    }
+
+    @Transactional
+    public void deleteBook(UUID id) {
+        bookRepository.deleteById(id);
+        elasticsearchOperations.delete(id.toString(), BookDocument.class);
     }
 }

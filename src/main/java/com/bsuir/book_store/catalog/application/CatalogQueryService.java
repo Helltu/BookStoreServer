@@ -25,6 +25,12 @@ public class CatalogQueryService {
 
     private final ElasticsearchOperations elasticsearchOperations;
 
+    public BookDocument getBookById(String id) {
+        BookDocument doc = elasticsearchOperations.get(id, BookDocument.class);
+        if (doc == null) throw new com.bsuir.book_store.shared.exception.DomainException("Книга не найдена");
+        return doc;
+    }
+
     public Page<BookDocument> search(BookSearchCriteria criteria, Pageable pageable) {
         // 1. Очистка сортировки: строгий БЕЛЫЙ СПИСОК (Whitelist) разрешенных полей
         List<Sort.Order> validOrders = new ArrayList<>();

@@ -1,6 +1,7 @@
 package com.bsuir.book_store.orders.api;
 
 import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
+import com.bsuir.book_store.orders.api.dto.UpdateOrderStatusRequest;
 import com.bsuir.book_store.orders.application.OrderService;
 import com.bsuir.book_store.orders.domain.Order;
 import com.bsuir.book_store.orders.domain.OrderStatus;
@@ -13,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,8 +48,8 @@ public class OrderController {
     @Operation(summary = "Получить все заказы (Менеджер)", description = "Доступно только пользователям с ролью MANAGER")
     @GetMapping
     @IsManager
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<Page<Order>> getAllOrders(Pageable pageable) {
+        return ResponseEntity.ok(orderService.getAllOrders(pageable));
     }
 
     @Operation(summary = "Обновить статус заказа", description = "Обновляет статус выбранного заказа на предоставленный")
@@ -54,9 +57,25 @@ public class OrderController {
     @IsManager
     public ResponseEntity<Void> updateStatus(
             @PathVariable UUID id,
-            @RequestParam OrderStatus status
+            @RequestBody UpdateOrderStatusRequest request
     ) {
-        orderService.changeStatus(id, status);
+        orderService.changeStatus(id, request.getStatus());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Детали заказа", description = "Возвращает заказ со списком товаров и адресом доставки")
+    @GetMapping("/{id}")
+    public ResponseEntity<Order> getOrderById(@PathVariable UUID id) {
+        return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
+    @Operation(summary = "Отменить заказ (Клиент)", description = "Отмена заказа пользователем (только в статусе NEW)")
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancelOrder(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        orderService.cancelOrder(id, userDetails.getUsername());
         return ResponseEntity.ok().build();
     }
 }

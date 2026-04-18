@@ -11,6 +11,8 @@ import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.domain.User;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,12 +64,35 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getAllOrders() {
-        return orderRepository.findAllByOrderByCreatedAtDesc();
+    public Page<Order> getAllOrders(Pageable pageable) {
+        Page<Order> orders = orderRepository.findAllByOrderByCreatedAtDesc(pageable);
+        // Инициализация ленивых коллекций, чтобы избежать LazyInitializationException
+        orders.forEach(o -> o.getOrderItems().size());
+        return orders;
     }
 
     @Transactional(readOnly = true)
     public List<Order> getMyOrders(String username) {
         return orderRepository.findByUserUsernameOrderByCreatedAtDesc(username);
+    }
+
+    @Transactional(readOnly = true)
+    public Order getOrderById(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+        order.getOrderItems().size(); // Инициализация ленивой коллекции товаров
+        return order;
+    }
+
+    @Transactional
+    public void cancelOrder(UUID orderId, String username) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+
+        if (!order.getUser().getUsername().equals(username)) {
+            throw new DomainException("У вас нет прав на отмену этого заказа");
+        }
+
+        order.cancelByUser();
     }
 }

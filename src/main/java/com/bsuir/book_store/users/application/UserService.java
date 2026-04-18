@@ -54,6 +54,14 @@ public class UserService {
     }
 
     @Transactional
+    public void deleteAddress(String username, UUID addressId) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+        user.removeAddress(addressId);
+        userRepository.save(user);
+    }
+
+    @Transactional
     public void changePassword(String username, String newPassword) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new DomainException("User not found"));

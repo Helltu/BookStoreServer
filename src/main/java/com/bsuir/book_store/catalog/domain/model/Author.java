@@ -21,12 +21,18 @@ public class Author {
     @Column(columnDefinition = "TEXT")
     private String biography;
 
-    public void updateDetails(String name, String biography) {
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    public void updateDetails(String name, String biography, String photoUrl) {
         if (name != null && !name.isBlank()) {
             this.name = name.trim();
         }
         if (biography != null) {
             this.biography = biography.trim();
+        }
+        if (photoUrl != null && !photoUrl.isBlank()) {
+            this.photoUrl = photoUrl.trim();
         }
     }
 }

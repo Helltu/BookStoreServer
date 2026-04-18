@@ -21,12 +21,18 @@ public class Publisher {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    public void updateDetails(String name, String description) {
+    @Column(name = "logo_url")
+    private String logoUrl;
+
+    public void updateDetails(String name, String description, String logoUrl) {
         if (name != null && !name.isBlank()) {
             this.name = name.trim();
         }
         if (description != null) {
             this.description = description.trim();
+        }
+        if (logoUrl != null && !logoUrl.isBlank()) {
+            this.logoUrl = logoUrl.trim();
         }
     }
 }

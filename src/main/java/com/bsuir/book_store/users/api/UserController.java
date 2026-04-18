@@ -62,6 +62,16 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Удалить адрес", description = "Удаляет адрес из профиля пользователя")
+    @DeleteMapping("/me/addresses/{addressId}")
+    public ResponseEntity<Void> deleteAddress(
+            @PathVariable UUID addressId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.deleteAddress(userDetails.getUsername(), addressId);
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Добавить книгу в избранное")
     @PostMapping("/me/wishlist/{bookId}")
     public ResponseEntity<Void> addToWishlist(
