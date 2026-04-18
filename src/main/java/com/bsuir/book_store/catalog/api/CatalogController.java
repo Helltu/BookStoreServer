@@ -57,11 +57,9 @@ public class CatalogController {
     @PostMapping(value = "/books", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
     public ResponseEntity<UUID> createBook(
-            @RequestPart("request") CreateBookRequest request,
-            @RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
-            @RequestPart(value = "previewFiles", required = false) List<MultipartFile> previewFiles
+            @ModelAttribute CreateBookRequest request
     ) {
-        return ResponseEntity.ok(commandService.createBook(request, coverFile, previewFiles));
+        return ResponseEntity.ok(commandService.createBook(request, request.getCoverFile(), request.getPreviewFiles()));
     }
 
     @Operation(summary = "Обновление книги", description = "Изменение данных книги (кроме ISBN)")
@@ -69,11 +67,9 @@ public class CatalogController {
     @IsManager
     public ResponseEntity<Void> updateBook(
             @PathVariable UUID id, 
-            @RequestPart("request") UpdateBookRequest request,
-            @RequestPart(value = "coverFile", required = false) MultipartFile coverFile,
-            @RequestPart(value = "previewFiles", required = false) List<MultipartFile> previewFiles
+            @ModelAttribute UpdateBookRequest request
     ) {
-        commandService.updateBook(id, request, coverFile, previewFiles);
+        commandService.updateBook(id, request, request.getCoverFile(), request.getPreviewFiles());
         return ResponseEntity.ok().build();
     }
 
