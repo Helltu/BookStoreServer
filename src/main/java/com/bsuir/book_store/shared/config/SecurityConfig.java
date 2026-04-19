@@ -27,6 +27,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> req
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/books/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/book/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
