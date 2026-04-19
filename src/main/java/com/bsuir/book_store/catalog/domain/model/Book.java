@@ -43,6 +43,12 @@ public class Book {
     @Column(nullable = false)
     private BigDecimal cost;
 
+    @Column(name = "average_rating")
+    private Double averageRating = 0.0;
+
+    @Column(name = "total_reviews")
+    private Integer totalReviews = 0;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "publisher_id")
     private Publisher publisher;
@@ -162,5 +168,10 @@ public class Book {
         if (description != null && !description.isBlank()) {
             this.description = description.trim();
         }
+    }
+
+    public void updateRating(double averageRating, int totalReviews) {
+        this.averageRating = averageRating;
+        this.totalReviews = totalReviews;
     }
 }

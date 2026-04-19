@@ -35,6 +35,12 @@ public class BookDocument {
     @Field(type = FieldType.Double)
     private BigDecimal price;
 
+    @Field(type = FieldType.Double)
+    private Double averageRating;
+
+    @Field(type = FieldType.Integer)
+    private Integer totalReviews;
+
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "standard"),
             otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) }

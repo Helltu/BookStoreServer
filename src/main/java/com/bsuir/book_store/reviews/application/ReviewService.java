@@ -2,6 +2,7 @@ package com.bsuir.book_store.reviews.application;
 
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
 import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
 import com.bsuir.book_store.reviews.domain.Review;
 import com.bsuir.book_store.reviews.infrastructure.ReviewRepository;
@@ -22,6 +23,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
+    private final SearchSyncService searchSyncService;
 
     @Transactional
     public UUID addReview(CreateReviewRequest request, String username) {
@@ -42,19 +44,37 @@ public class ReviewService {
                 request.getText()
         );
 
-        return reviewRepository.save(review).getId();
+        review = reviewRepository.save(review);
+        reviewRepository.flush(); // Принудительно сбрасываем в БД перед пересчетом
+        
+        updateBookRating(book);
+        return review.getId();
     }
 
     @Transactional
     public void deleteReview(UUID reviewId) {
-        if (!reviewRepository.existsById(reviewId)) {
-            throw new DomainException("Review not found");
-        }
-        reviewRepository.deleteById(reviewId);
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new DomainException("Review not found"));
+        Book book = review.getBook();
+        
+        reviewRepository.delete(review);
+        reviewRepository.flush(); // Принудительно удаляем из БД перед пересчетом
+        updateBookRating(book);
     }
 
     @Transactional(readOnly = true)
     public List<Review> getReviewsForBook(UUID bookId) {
         return reviewRepository.findAllByBookIdOrderByCreatedAtDesc(bookId);
+    }
+
+    private void updateBookRating(Book book) {
+        long count = reviewRepository.countByBookId(book.getId());
+        Double avg = reviewRepository.getAverageRatingByBookId(book.getId());
+        
+        double roundedAvg = avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0;
+        
+        book.updateRating(roundedAvg, (int) count);
+        bookRepository.save(book);
+        searchSyncService.syncBook(book);
     }
 }
