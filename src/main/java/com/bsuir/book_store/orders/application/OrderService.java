@@ -1,5 +1,6 @@
 package com.bsuir.book_store.orders.application;
 
+import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
+    private final SearchSyncService searchSyncService;
 
     @Transactional
     public UUID createOrder(CreateOrderRequest request, String username) {
@@ -36,11 +39,13 @@ public class OrderService {
 
         Order order = Order.create(user);
 
+        List<Book> reservedBooks = new ArrayList<>();
         for (var itemRequest : request.getItems()) {
             Book book = bookRepository.findById(itemRequest.getBookId())
                     .orElseThrow(() -> new DomainException("Book not found: " + itemRequest.getBookId()));
 
             order.addItem(book, itemRequest.getQuantity());
+            reservedBooks.add(book);
         }
 
         order.arrangeDelivery(
@@ -50,7 +55,9 @@ public class OrderService {
                 request.getDeliveryDetails().getTimeSlot()
         );
 
-        return orderRepository.save(order).getId();
+        UUID orderId = orderRepository.save(order).getId();
+        reservedBooks.forEach(searchSyncService::syncBook);
+        return orderId;
     }
 
     @Transactional
@@ -58,9 +65,15 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new DomainException("Order not found"));
 
-        order.updateStatus(newStatus);
+        boolean becomingCancelled = newStatus == OrderStatus.CANCELLED
+                && order.getStatus() != OrderStatus.CANCELLED;
 
+        order.updateStatus(newStatus);
         orderRepository.save(order);
+
+        if (becomingCancelled) {
+            order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -94,5 +107,6 @@ public class OrderService {
         }
 
         order.cancelByUser();
+        order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
     }
 }

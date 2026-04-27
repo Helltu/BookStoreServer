@@ -28,6 +28,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/search").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/books/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/price-range").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/publishers").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/genres").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/authors").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/book/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",

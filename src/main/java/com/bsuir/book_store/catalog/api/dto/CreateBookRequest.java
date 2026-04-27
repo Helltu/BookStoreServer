@@ -37,9 +37,7 @@ public class CreateBookRequest {
     @Schema(description = "Ключевые слова (оставьте пустым для автогенерации)", example = "[]")
     private List<String> keywords;
 
-    @Schema(description = "Файл обложки (JPEG/PNG)")
     private MultipartFile coverFile;
 
-    @Schema(description = "Файлы превью (страницы книги)")
     private List<MultipartFile> previewFiles;
 }

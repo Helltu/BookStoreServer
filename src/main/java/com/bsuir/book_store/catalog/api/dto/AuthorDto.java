@@ -13,6 +13,5 @@ public class AuthorDto {
     @Schema(description = "Биография (опционально)", example = "")
     private String biography;
 
-    @Schema(description = "Фотография автора (опционально)")
     private MultipartFile photo;
 }

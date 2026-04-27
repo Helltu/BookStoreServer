@@ -36,6 +36,9 @@ public class PublisherService {
 
     @Transactional
     public Publisher create(PublisherDto dto) {
+        if (publisherRepository.findByName(dto.getName()).isPresent()) {
+            throw new DomainException("Издательство с таким названием уже существует");
+        }
         String logoUrl = null;
         if (dto.getLogo() != null && !dto.getLogo().isEmpty()) {
             logoUrl = storageService.store(dto.getLogo());
@@ -53,6 +56,9 @@ public class PublisherService {
     public Publisher update(UUID id, PublisherDto dto) {
         Publisher publisher = publisherRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Издательство не найдено"));
+        publisherRepository.findByName(dto.getName())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> { throw new DomainException("Издательство с таким названием уже существует"); });
 
         String logoUrl = null;
         if (dto.getLogo() != null && !dto.getLogo().isEmpty()) {

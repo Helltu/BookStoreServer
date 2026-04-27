@@ -32,6 +32,9 @@ public class BookDocument {
     @Field(type = FieldType.Keyword)
     private String isbn;
 
+    @Field(type = FieldType.Integer)
+    private Integer stockQuantity;
+
     @Field(type = FieldType.Double)
     private BigDecimal price;
 

@@ -13,6 +13,5 @@ public class PublisherDto {
     @Schema(description = "Описание (опционально)", example = "")
     private String description;
 
-    @Schema(description = "Логотип издательства (опционально)")
     private MultipartFile logo;
 }

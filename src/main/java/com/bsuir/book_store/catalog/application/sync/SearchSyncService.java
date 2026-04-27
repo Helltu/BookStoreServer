@@ -21,6 +21,7 @@ public class SearchSyncService {
                 .title(book.getTitle())
                 .description(book.getDescription())
                 .isbn(book.getIsbn())
+                .stockQuantity(book.getStockQuantity())
                 .price(book.getCost())
                 .averageRating(book.getAverageRating() != null ? book.getAverageRating() : 0.0)
                 .totalReviews(book.getTotalReviews() != null ? book.getTotalReviews() : 0)

@@ -34,9 +34,7 @@ public class UpdateBookRequest {
     @Schema(description = "Ключевые слова", example = "[]")
     private List<String> keywords;
 
-    @Schema(description = "Новый файл обложки (заменит старый)")
     private MultipartFile coverFile;
 
-    @Schema(description = "Новые файлы превью (заменят старые)")
     private List<MultipartFile> previewFiles;
 }

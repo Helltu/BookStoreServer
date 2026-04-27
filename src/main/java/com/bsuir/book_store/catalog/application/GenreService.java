@@ -28,6 +28,9 @@ public class GenreService {
 
     @Transactional
     public Genre create(GenreDto dto) {
+        if (genreRepository.findByName(dto.getName()).isPresent()) {
+            throw new DomainException("Жанр с таким названием уже существует");
+        }
         Genre genre = Genre.builder()
                 .name(dto.getName())
                 .build();
@@ -38,6 +41,9 @@ public class GenreService {
     public Genre update(UUID id, GenreDto dto) {
         Genre genre = genreRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Жанр не найден"));
+        genreRepository.findByName(dto.getName())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> { throw new DomainException("Жанр с таким названием уже существует"); });
         genre.updateDetails(dto.getName());
         genre = genreRepository.save(genre);
 

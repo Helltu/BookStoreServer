@@ -69,7 +69,7 @@ public class CatalogCommandService {
         List<Image> previews = new ArrayList<>();
         if (previewFiles != null) {
             for (MultipartFile pf : previewFiles) {
-                if (!pf.isEmpty()) {
+                if (pf != null && !pf.isEmpty()) {
                     previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
                 }
             }
@@ -128,7 +128,7 @@ public class CatalogCommandService {
         if (previewFiles != null) {
             previews = new ArrayList<>();
             for (MultipartFile pf : previewFiles) {
-                if (!pf.isEmpty()) {
+                if (pf != null && !pf.isEmpty()) {
                     previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
                 }
             }
@@ -191,6 +191,16 @@ public class CatalogCommandService {
         } else {
             throw new DomainException("Не удалось сгенерировать описание. ИИ вернул пустой ответ.");
         }
+    }
+
+    @Transactional
+    public void adjustStock(UUID bookId, int quantity) {
+        if (quantity < 0) throw new DomainException("Количество на складе не может быть отрицательным");
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+        book.updateDetails(null, null, null, quantity, null, null, null, null, null, null);
+        bookRepository.save(book);
+        searchSyncService.syncBook(book);
     }
 
     @Transactional

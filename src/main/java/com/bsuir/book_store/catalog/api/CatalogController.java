@@ -3,6 +3,8 @@ package com.bsuir.book_store.catalog.api;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.api.dto.CreateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
+import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
+import com.bsuir.book_store.catalog.api.dto.StockAdjustRequest;
 import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.KeywordRequest;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
@@ -47,6 +49,12 @@ public class CatalogController {
         return ResponseEntity.ok("Книга '" + importedBook.getTitle() + "' успешно импортирована с ID: " + importedBook.getId());
     }
 
+    @Operation(summary = "Диапазон цен", description = "Минимальная и максимальная цена в каталоге для слайдера фильтрации")
+    @GetMapping("/price-range")
+    public ResponseEntity<PriceRangeResponse> getPriceRange() {
+        return ResponseEntity.ok(queryService.getPriceRange());
+    }
+
     @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params)")
     @GetMapping("/search")
     public ResponseEntity<Page<BookDocument>> search(@ModelAttribute BookSearchCriteria criteria,
@@ -77,6 +85,14 @@ public class CatalogController {
             @ModelAttribute UpdateBookRequest request
     ) {
         commandService.updateBook(id, request, request.getCoverFile(), request.getPreviewFiles());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Установить количество на складе (Менеджер)", description = "Устанавливает абсолютное значение stock для книги")
+    @PatchMapping("/books/{id}/stock")
+    @IsManager
+    public ResponseEntity<Void> adjustStock(@PathVariable UUID id, @RequestBody StockAdjustRequest request) {
+        commandService.adjustStock(id, request.getQuantity());
         return ResponseEntity.ok().build();
     }
 

@@ -3,7 +3,9 @@ package com.bsuir.book_store.catalog.application;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
+import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -18,12 +20,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class CatalogQueryService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+    private final BookRepository bookRepository;
+
+    public PriceRangeResponse getPriceRange() {
+        return new PriceRangeResponse(bookRepository.findMinPrice(), bookRepository.findMaxPrice());
+    }
 
     public BookDocument getBookById(String id) {
         BookDocument doc = elasticsearchOperations.get(id, BookDocument.class);
@@ -56,19 +64,29 @@ public class CatalogQueryService {
         boolean hasGenres = criteria.getGenres() != null && !criteria.getGenres().isEmpty();
         boolean hasAuthors = criteria.getAuthors() != null && !criteria.getAuthors().isEmpty();
         boolean hasPublisher = criteria.getPublisher() != null && !criteria.getPublisher().isBlank();
+        boolean hasInStock = Boolean.TRUE.equals(criteria.getInStock());
 
         Query query;
-        if (!hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors && !hasPublisher) {
+        if (!hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors && !hasPublisher && !hasInStock) {
             // Если фильтров нет, возвращаем все документы (match_all)
             query = Query.of(q -> q.matchAll(m -> m));
         } else {
             query = Query.of(q -> q.bool(b -> {
                 if (hasQuery) {
-                    b.must(m -> m.multiMatch(mm -> mm
-                            .query(criteria.getQuery())
-                            .fields("title^5", "authors^3", "keywords^2", "description^2", "genres^1", "publisher^1")
-                            .fuzziness("AUTO")
-                    ));
+                    String rawQuery = criteria.getQuery();
+                    b.must(m -> m.bool(inner -> {
+                        inner.should(s -> s.multiMatch(mm -> mm
+                                .query(rawQuery)
+                                .fields("title^5", "authors^3", "keywords^2", "description^2", "genres^1", "publisher^1")
+                                .fuzziness("AUTO")
+                        ));
+                        inner.should(s -> s.term(t -> t.field("isbn").value(rawQuery)));
+                        if (isValidUUID(rawQuery)) {
+                            inner.should(s -> s.ids(i -> i.values(rawQuery)));
+                        }
+                        inner.minimumShouldMatch("1");
+                        return inner;
+                    }));
                 }
 
                 if (hasMinPrice) {
@@ -93,6 +111,10 @@ public class CatalogQueryService {
                     b.filter(f -> f.term(t -> t.field("publisher.keyword").value(criteria.getPublisher())));
                 }
 
+                if (hasInStock) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("stockQuantity").gte(1.0))));
+                }
+
                 return b;
             }));
         }
@@ -109,5 +131,14 @@ public class CatalogQueryService {
                 .toList();
 
         return new PageImpl<>(content, safePageable, searchHits.getTotalHits());
+    }
+
+    private boolean isValidUUID(String str) {
+        try {
+            UUID.fromString(str);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 }

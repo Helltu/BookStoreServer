@@ -25,4 +25,7 @@ public class BookSearchCriteria {
 
     @Schema(description = "Издательство", example = "")
     private String publisher;
+
+    @Schema(description = "Только книги в наличии", example = "true")
+    private Boolean inStock;
 }
