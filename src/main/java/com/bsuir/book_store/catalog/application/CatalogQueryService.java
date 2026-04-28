@@ -45,7 +45,7 @@ public class CatalogQueryService {
         if (pageable.getSort() != null && pageable.getSort().isSorted()) {
             for (Sort.Order order : pageable.getSort()) {
                 String prop = order.getProperty();
-                if ("price".equals(prop)) {
+                if ("price".equals(prop) || "stockQuantity".equals(prop)) {
                     validOrders.add(order);
                 } else if ("title".equals(prop) || "publisher".equals(prop) || "authors".equals(prop)) {
                     validOrders.add(order.withProperty(prop + ".keyword"));
