@@ -125,11 +125,19 @@ public class CatalogCommandService {
         }
 
         List<Image> previews = book.getPreviewImages();
-        if (previewFiles != null) {
+        List<String> keepUrls = request.getKeepPreviewUrls();
+        if (keepUrls != null || previewFiles != null) {
             previews = new ArrayList<>();
-            for (MultipartFile pf : previewFiles) {
-                if (pf != null && !pf.isEmpty()) {
-                    previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
+            if (keepUrls != null) {
+                book.getPreviewImages().stream()
+                        .filter(img -> keepUrls.contains(img.getUrl()))
+                        .forEach(previews::add);
+            }
+            if (previewFiles != null) {
+                for (MultipartFile pf : previewFiles) {
+                    if (pf != null && !pf.isEmpty()) {
+                        previews.add(Image.builder().url(storageService.store(pf)).imageType(ImageType.PREVIEW_PAGE).build());
+                    }
                 }
             }
         }
@@ -144,16 +152,23 @@ public class CatalogCommandService {
         searchSyncService.syncBook(book);
     }
 
-    @Transactional
-    public void generateAndAddKeywords(UUID bookId) {
+    public List<String> generateKeywordSuggestions(UUID bookId) {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
-        List<String> newTags = bookTaggingService.generateTags(book.getTitle(), book.getDescription(), book.getKeywords());
-        newTags.forEach(book::addKeyword);
+        return bookTaggingService.generateTags(book.getTitle(), book.getDescription(), book.getKeywords());
+    }
 
-        bookRepository.save(book);
-        searchSyncService.syncBook(book);
+    public List<String> generateKeywordSuggestions(String title, String description, Set<String> existingKeywords) {
+        return bookTaggingService.generateTags(title, description, existingKeywords);
+    }
+
+    public String generateDescriptionSuggestion(String title, String authors, String genres) {
+        String result = bookTaggingService.generateDescription(title, authors, genres);
+        if (result == null || result.isBlank()) {
+            throw new DomainException("Не удалось сгенерировать описание. ИИ вернул пустой ответ.");
+        }
+        return result;
     }
 
     @Transactional
@@ -174,8 +189,7 @@ public class CatalogCommandService {
         searchSyncService.syncBook(book);
     }
 
-    @Transactional
-    public void generateAndSetDescription(UUID bookId) {
+    public String generateDescriptionSuggestion(UUID bookId) {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
@@ -184,13 +198,10 @@ public class CatalogCommandService {
 
         String newDescription = bookTaggingService.generateDescription(book.getTitle(), authors, genres);
 
-        if (newDescription != null && !newDescription.isBlank()) {
-            book.updateDescription(newDescription);
-            bookRepository.save(book);
-            searchSyncService.syncBook(book);
-        } else {
+        if (newDescription == null || newDescription.isBlank()) {
             throw new DomainException("Не удалось сгенерировать описание. ИИ вернул пустой ответ.");
         }
+        return newDescription;
     }
 
     @Transactional

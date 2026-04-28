@@ -6,6 +6,8 @@ import com.bsuir.book_store.catalog.api.dto.ImportBookRequest;
 import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
 import com.bsuir.book_store.catalog.api.dto.StockAdjustRequest;
 import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
+import com.bsuir.book_store.catalog.api.dto.GenerateDescriptionRequest;
+import com.bsuir.book_store.catalog.api.dto.GenerateKeywordsRequest;
 import com.bsuir.book_store.catalog.api.dto.KeywordRequest;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
@@ -104,12 +106,19 @@ public class CatalogController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Сгенерировать теги (Менеджер)", description = "ИИ генерирует новые ключевые слова для книги с учетом уже существующих")
-    @PostMapping("/books/{id}/keywords/generate")
+    @Operation(summary = "Сгенерировать теги (Менеджер)", description = "ИИ генерирует новые ключевые слова для книги с учетом уже существующих — возвращает предложения без сохранения")
+    @GetMapping("/books/{id}/keywords/generate")
     @IsManager
-    public ResponseEntity<Void> generateKeywords(@PathVariable UUID id) {
-        commandService.generateAndAddKeywords(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<List<String>> generateKeywords(@PathVariable UUID id) {
+        return ResponseEntity.ok(commandService.generateKeywordSuggestions(id));
+    }
+
+    @Operation(summary = "Сгенерировать теги без id (Менеджер)", description = "ИИ генерирует ключевые слова по переданным данным — для новой книги до сохранения")
+    @PostMapping("/books/keywords/suggest")
+    @IsManager
+    public ResponseEntity<List<String>> suggestKeywords(@RequestBody GenerateKeywordsRequest request) {
+        return ResponseEntity.ok(commandService.generateKeywordSuggestions(
+                request.getTitle(), request.getDescription(), request.getExistingKeywords()));
     }
 
     @Operation(summary = "Добавить ключевое слово (Менеджер)", description = "Ручное добавление одного ключевого слова")
@@ -128,11 +137,18 @@ public class CatalogController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Сгенерировать описание (Менеджер)", description = "ИИ генерирует красивую аннотацию для книги на основе названия, авторов и жанров")
-    @PostMapping("/books/{id}/description/generate")
+    @Operation(summary = "Сгенерировать описание (Менеджер)", description = "ИИ генерирует аннотацию для книги — возвращает предложение без сохранения")
+    @GetMapping("/books/{id}/description/generate")
     @IsManager
-    public ResponseEntity<Void> generateDescription(@PathVariable UUID id) {
-        commandService.generateAndSetDescription(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> generateDescription(@PathVariable UUID id) {
+        return ResponseEntity.ok(commandService.generateDescriptionSuggestion(id));
+    }
+
+    @Operation(summary = "Сгенерировать описание без id (Менеджер)", description = "ИИ генерирует аннотацию по переданным данным — для новой книги до сохранения")
+    @PostMapping("/books/description/suggest")
+    @IsManager
+    public ResponseEntity<String> suggestDescription(@RequestBody GenerateDescriptionRequest request) {
+        return ResponseEntity.ok(commandService.generateDescriptionSuggestion(
+                request.getTitle(), request.getAuthors(), request.getGenres()));
     }
 }

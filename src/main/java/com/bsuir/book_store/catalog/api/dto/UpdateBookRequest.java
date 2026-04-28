@@ -37,4 +37,7 @@ public class UpdateBookRequest {
     private MultipartFile coverFile;
 
     private List<MultipartFile> previewFiles;
+
+    @Schema(description = "URL превью которые нужно сохранить (null = не менять превью, [] = удалить все)")
+    private List<String> keepPreviewUrls;
 }
