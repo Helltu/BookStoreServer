@@ -109,7 +109,7 @@ public class User implements UserDetails {
     }
 
     public void addAddress(UserAddress address) {
-        if (address == null) throw new DomainException("Address cannot be null");
+        if (address == null) throw new DomainException("Адрес не может быть пустым");
 
         if (Boolean.TRUE.equals(address.getIsDefault())) {
             this.addresses.forEach(UserAddress::unsetDefault);
@@ -128,6 +128,18 @@ public class User implements UserDetails {
         }
     }
 
+    public void updateAddress(UUID addressId, String addressName, String addressText, Boolean isDefault) {
+        UserAddress address = this.addresses.stream()
+                .filter(a -> a.getId().equals(addressId))
+                .findFirst()
+                .orElseThrow(() -> new DomainException("Адрес не найден"));
+
+        if (Boolean.TRUE.equals(isDefault)) {
+            this.addresses.forEach(UserAddress::unsetDefault);
+        }
+        address.update(addressName, addressText, isDefault);
+    }
+
     public void addToWishlist(Book book) {
         if (book != null) {
             this.wishlist.add(book);
@@ -142,7 +154,7 @@ public class User implements UserDetails {
 
     public void changePassword(String newEncodedPassword) {
         if (newEncodedPassword == null || newEncodedPassword.isBlank()) {
-            throw new DomainException("Password hash cannot be empty");
+            throw new DomainException("Хэш пароля не может быть пустым");
         }
         this.password = newEncodedPassword;
     }

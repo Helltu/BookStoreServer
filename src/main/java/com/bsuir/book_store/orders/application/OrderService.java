@@ -4,6 +4,7 @@ import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
+import com.bsuir.book_store.orders.api.dto.OrderAnalyticsResponse;
 import com.bsuir.book_store.orders.domain.DeliveryDetails;
 import com.bsuir.book_store.orders.domain.Order;
 import com.bsuir.book_store.orders.domain.OrderStatus;
@@ -17,10 +18,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -31,6 +38,7 @@ public class OrderService {
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final SearchSyncService searchSyncService;
+    private final OrderEmailService orderEmailService;
 
     @Transactional
     public UUID createOrder(CreateOrderRequest request, String username) {
@@ -44,6 +52,10 @@ public class OrderService {
             Book book = bookRepository.findById(itemRequest.getBookId())
                     .orElseThrow(() -> new DomainException("Book not found: " + itemRequest.getBookId()));
 
+            if (book.getStockQuantity() < itemRequest.getQuantity()) {
+                throw new DomainException("Недостаточно товара '" + book.getTitle() + "' на складе. Доступно: " + book.getStockQuantity());
+            }
+
             order.addItem(book, itemRequest.getQuantity());
             reservedBooks.add(book);
         }
@@ -55,9 +67,10 @@ public class OrderService {
                 request.getDeliveryDetails().getTimeSlot()
         );
 
-        UUID orderId = orderRepository.save(order).getId();
+        Order savedOrder = orderRepository.save(order);
         reservedBooks.forEach(searchSyncService::syncBook);
-        return orderId;
+        orderEmailService.sendOrderCreated(savedOrder);
+        return savedOrder.getId();
     }
 
     @Transactional
@@ -74,6 +87,8 @@ public class OrderService {
         if (becomingCancelled) {
             order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
         }
+
+        orderEmailService.sendStatusChanged(order, newStatus);
     }
 
     @Transactional(readOnly = true)
@@ -90,11 +105,90 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Order getOrderById(UUID orderId) {
+    public Order getOrderById(UUID orderId, String username) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new DomainException("Заказ не найден"));
-        order.getOrderItems().size(); // Инициализация ленивой коллекции товаров
+
+        User requester = userRepository.findByUsername(username)
+                .orElseThrow(() -> new DomainException("User not found"));
+
+        boolean isManager = requester.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+
+        if (!isManager && !order.getUser().getUsername().equals(username)) {
+            throw new DomainException("У вас нет прав на просмотр этого заказа");
+        }
+
+        order.getOrderItems().size();
         return order;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Order> getOrdersFiltered(OrderStatus status, String orderNumber,
+                                          LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        Timestamp tsFrom = from != null ? Timestamp.valueOf(from) : null;
+        Timestamp tsTo = to != null ? Timestamp.valueOf(to) : null;
+        Page<Order> orders = orderRepository.findWithFilters(status, orderNumber, tsFrom, tsTo, pageable);
+        orders.forEach(o -> o.getOrderItems().size());
+        return orders;
+    }
+
+    @Transactional(readOnly = true)
+    public OrderAnalyticsResponse getAnalytics() {
+        long total = orderRepository.count();
+
+        Map<String, Long> byStatus = new LinkedHashMap<>();
+        for (OrderStatus s : OrderStatus.values()) {
+            byStatus.put(s.name(), orderRepository.countByStatus(s));
+        }
+
+        BigDecimal revenueDelivered = orderRepository.sumTotalCostByStatus(OrderStatus.DELIVERED);
+        if (revenueDelivered == null) revenueDelivered = BigDecimal.ZERO;
+
+        BigDecimal revenueActive = Arrays.stream(OrderStatus.values())
+                .filter(s -> s != OrderStatus.CANCELLED)
+                .map(s -> {
+                    BigDecimal sum = orderRepository.sumTotalCostByStatus(s);
+                    return sum != null ? sum : BigDecimal.ZERO;
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new OrderAnalyticsResponse(total, byStatus, revenueDelivered, revenueActive);
+    }
+
+    @Transactional
+    public void requestReturn(UUID orderId, String username) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+
+        if (!order.getUser().getUsername().equals(username)) {
+            throw new DomainException("У вас нет прав на управление этим заказом");
+        }
+
+        order.requestReturn();
+        orderRepository.save(order);
+        orderEmailService.sendStatusChanged(order, OrderStatus.RETURN_REQUESTED);
+    }
+
+    @Transactional
+    public void approveReturn(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+
+        order.approveReturn();
+        orderRepository.save(order);
+        order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
+        orderEmailService.sendStatusChanged(order, OrderStatus.RETURNED);
+    }
+
+    @Transactional
+    public void rejectReturn(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+
+        order.rejectReturn();
+        orderRepository.save(order);
+        orderEmailService.sendStatusChanged(order, OrderStatus.DELIVERED);
     }
 
     @Transactional
@@ -108,5 +202,6 @@ public class OrderService {
 
         order.cancelByUser();
         order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
+        orderEmailService.sendStatusChanged(order, OrderStatus.CANCELLED);
     }
 }

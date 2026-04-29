@@ -43,4 +43,10 @@ public class UserAddress {
     void unsetDefault() {
         this.isDefault = false;
     }
+
+    public void update(String addressName, String addressText, Boolean isDefault) {
+        if (addressName != null) this.addressName = addressName;
+        if (addressText != null) this.addressText = addressText;
+        if (isDefault != null) this.isDefault = isDefault;
+    }
 }

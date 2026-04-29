@@ -1,10 +1,11 @@
 package com.bsuir.book_store.users.api;
 
-import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.users.api.dto.AddAddressRequest;
 import com.bsuir.book_store.users.api.dto.ChangePasswordRequest;
+import com.bsuir.book_store.users.api.dto.UpdateAddressRequest;
 import com.bsuir.book_store.users.api.dto.UpdateProfileRequest;
 import com.bsuir.book_store.users.api.dto.UserProfileResponse;
+import com.bsuir.book_store.users.api.dto.WishlistBookDto;
 import com.bsuir.book_store.users.application.UserService;
 import com.bsuir.book_store.users.domain.User;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,7 +49,7 @@ public class UserController {
             @RequestBody ChangePasswordRequest request,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        userService.changePassword(userDetails.getUsername(), request.getNewPassword());
+        userService.changePassword(userDetails.getUsername(), request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok().build();
     }
 
@@ -59,6 +60,17 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         userService.addAddress(userDetails.getUsername(), request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Обновить адрес", description = "Обновляет существующий адрес доставки")
+    @PatchMapping("/me/addresses/{addressId}")
+    public ResponseEntity<Void> updateAddress(
+            @PathVariable UUID addressId,
+            @RequestBody UpdateAddressRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        userService.updateAddress(userDetails.getUsername(), addressId, request);
         return ResponseEntity.ok().build();
     }
 
@@ -94,7 +106,7 @@ public class UserController {
 
     @Operation(summary = "Получить список желаемого")
     @GetMapping("/me/wishlist")
-    public ResponseEntity<List<Book>> getWishlist(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<WishlistBookDto>> getWishlist(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.getWishlist(userDetails.getUsername()));
     }
 }

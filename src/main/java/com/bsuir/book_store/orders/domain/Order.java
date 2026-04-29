@@ -103,10 +103,13 @@ public class Order {
         if (this.status == OrderStatus.DELIVERED && newStatus == OrderStatus.CANCELLED) {
             throw new DomainException("Cannot cancel an already delivered order");
         }
-        if (this.status == OrderStatus.CANCELLED) {
-            throw new DomainException("Cannot change status of a cancelled order");
+        if (this.status == OrderStatus.CANCELLED || this.status == OrderStatus.RETURNED) {
+            throw new DomainException("Cannot change status of a cancelled or returned order");
         }
-        
+        if (this.status == OrderStatus.RETURN_REQUESTED) {
+            throw new DomainException("Для управления возвратом используйте соответствующие эндпоинты");
+        }
+
         if (newStatus == OrderStatus.CANCELLED && this.status != OrderStatus.CANCELLED) {
             for (OrderItem item : this.orderItems) {
                 item.getBook().releaseStock(item.getQuantity());
@@ -127,5 +130,29 @@ public class Order {
             throw new DomainException("Отменить заказ можно только пока он находится в статусе NEW");
         }
         this.updateStatus(OrderStatus.CANCELLED);
+    }
+
+    public void requestReturn() {
+        if (this.status != OrderStatus.DELIVERED) {
+            throw new DomainException("Запросить возврат можно только для доставленных заказов");
+        }
+        this.status = OrderStatus.RETURN_REQUESTED;
+    }
+
+    public void approveReturn() {
+        if (this.status != OrderStatus.RETURN_REQUESTED) {
+            throw new DomainException("Подтвердить возврат можно только для заказов в статусе RETURN_REQUESTED");
+        }
+        for (OrderItem item : this.orderItems) {
+            item.getBook().releaseStock(item.getQuantity());
+        }
+        this.status = OrderStatus.RETURNED;
+    }
+
+    public void rejectReturn() {
+        if (this.status != OrderStatus.RETURN_REQUESTED) {
+            throw new DomainException("Отклонить возврат можно только для заказов в статусе RETURN_REQUESTED");
+        }
+        this.status = OrderStatus.DELIVERED;
     }
 }
