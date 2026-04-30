@@ -5,6 +5,7 @@ import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
 import com.bsuir.book_store.orders.api.dto.OrderAnalyticsResponse;
+import com.bsuir.book_store.orders.api.dto.export.OrderExportDto;
 import com.bsuir.book_store.orders.domain.DeliveryDetails;
 import com.bsuir.book_store.orders.domain.Order;
 import com.bsuir.book_store.orders.domain.OrderStatus;
@@ -44,6 +45,11 @@ public class OrderService {
     public UUID createOrder(CreateOrderRequest request, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new DomainException("User not found"));
+
+        if (user.getFirstName() == null || user.getFirstName().isBlank() ||
+            user.getLastName() == null || user.getLastName().isBlank()) {
+            throw new DomainException("Для оформления заказа необходимо заполнить имя и фамилию в профиле");
+        }
 
         Order order = Order.create(user);
 
@@ -203,5 +209,24 @@ public class OrderService {
         order.cancelByUser();
         order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
         orderEmailService.sendStatusChanged(order, OrderStatus.CANCELLED);
+    }
+
+    @Transactional
+    public void updateDeliverySlot(UUID orderId, String timeSlot, java.time.LocalDate deliveryDate) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+        DeliveryDetails details = order.getDeliveryDetails();
+        if (details == null) {
+            throw new DomainException("У заказа нет данных доставки");
+        }
+        details.setDeliveryTimeSlot(timeSlot);
+        details.setDeliveryDate(java.sql.Date.valueOf(deliveryDate));
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderExportDto> exportOrders() {
+        List<Order> orders = orderRepository.findAll();
+        orders.forEach(o -> o.getOrderItems().size());
+        return orders.stream().map(OrderExportDto::from).toList();
     }
 }

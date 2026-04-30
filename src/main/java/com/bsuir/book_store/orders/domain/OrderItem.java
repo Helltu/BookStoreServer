@@ -24,9 +24,13 @@ public class OrderItem {
     @JoinColumn(name = "order_id")
     private Order order;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
+
+    @Column(name = "book_id", insertable = false, updatable = false)
+    private UUID bookId;
 
     @Column(name = "book_title")
     private String bookTitle;

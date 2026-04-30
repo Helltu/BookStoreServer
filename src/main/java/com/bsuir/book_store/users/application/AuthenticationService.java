@@ -23,17 +23,37 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final EmailVerificationService emailVerificationService;
 
-    @Transactional
-    public AuthenticationResponse register(RegisterRequest request) {
+    public void register(RegisterRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new DomainException("Пользователь с таким логином уже существует");
         }
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new DomainException("Пользователь с таким email уже существует");
         }
-
         User.validateRawPassword(request.getPassword());
+        emailVerificationService.initiate(request);
+    }
+
+    public void resendVerification(String email) {
+        emailVerificationService.resend(email);
+    }
+
+    public long getVerificationSecondsRemaining(String email) {
+        return emailVerificationService.getSecondsRemaining(email);
+    }
+
+    @Transactional
+    public AuthenticationResponse completeRegistration(String email, String code) {
+        RegisterRequest request = emailVerificationService.verify(email, code);
+
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new DomainException("Пользователь с таким логином уже существует");
+        }
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new DomainException("Пользователь с таким email уже существует");
+        }
 
         User user = User.register(
                 request.getUsername(),
@@ -46,11 +66,7 @@ public class AuthenticationService {
         );
 
         userRepository.save(user);
-
-        var jwtToken = jwtService.generateToken(user);
-        return AuthenticationResponse.builder()
-                .token(jwtToken)
-                .build();
+        return AuthenticationResponse.builder().token(jwtService.generateToken(user)).build();
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {

@@ -11,6 +11,7 @@ import com.bsuir.book_store.users.api.dto.UserProfileResponse;
 import com.bsuir.book_store.users.api.dto.WishlistBookDto;
 import com.bsuir.book_store.users.domain.User;
 import com.bsuir.book_store.users.domain.UserAddress;
+import com.bsuir.book_store.orders.application.OrderEmailService;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final BookRepository bookRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OrderEmailService orderEmailService;
 
     @Transactional
     public void updateProfile(String username, UpdateProfileRequest request) {
@@ -83,6 +85,7 @@ public class UserService {
 
         user.changePassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+        orderEmailService.sendPasswordChanged(user.getEmail(), user.getUsername());
     }
 
     @Transactional

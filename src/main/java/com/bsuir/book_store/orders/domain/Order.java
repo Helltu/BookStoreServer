@@ -4,6 +4,7 @@ import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.users.domain.User;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -29,6 +30,7 @@ public class Order {
     @Column(name = "order_number", unique = true, nullable = false)
     private String orderNumber;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -40,10 +42,10 @@ public class Order {
     @Column(name = "total_cost", nullable = false)
     private BigDecimal totalCost;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private DeliveryDetails deliveryDetails;
 
     @Column(name = "order_date")
@@ -91,8 +93,8 @@ public class Order {
                 .customerName(customerName)
                 .contactPhone(phone)
                 .addressText(addressText)
-                .deliveryTimeSlot(timeSlot)
-                .deliveryDate(java.sql.Date.valueOf(java.time.LocalDate.now().plusDays(1)))
+                .deliveryTimeSlot(null)
+                .deliveryDate(null)
                 .build();
         
         this.deliveryDetails = details;

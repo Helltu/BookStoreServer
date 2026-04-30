@@ -20,12 +20,25 @@ public class OrderEmailService {
     public void sendOrderCreated(Order order) {
         String to = order.getUser().getEmail();
         String subject = "Заказ " + order.getOrderNumber() + " оформлен";
+
+        StringBuilder items = new StringBuilder();
+        order.getOrderItems().forEach(item -> items
+                .append("  • ").append(item.getBookTitle())
+                .append(" x").append(item.getQuantity())
+                .append(" — ").append(item.getPricePerItem().multiply(java.math.BigDecimal.valueOf(item.getQuantity()))).append(" руб.\n")
+        );
+
         String text = String.format(
-                "Здравствуйте, %s!\n\nВаш заказ %s успешно оформлен.\nСумма: %s руб.\nДата доставки: %s\n\nСпасибо за покупку!",
+                "Здравствуйте, %s!\n\n" +
+                "Ваш заказ %s успешно оформлен.\n\n" +
+                "Состав заказа:\n%s\n" +
+                "Итого: %s руб.\n\n" +
+                "Наш менеджер свяжется с вами в ближайшее время для подтверждения заказа и уточнения деталей доставки.\n\n" +
+                "Спасибо за покупку!",
                 order.getUser().getFirstName() != null ? order.getUser().getFirstName() : order.getUser().getUsername(),
                 order.getOrderNumber(),
-                order.getTotalCost(),
-                order.getDeliveryDetails() != null ? order.getDeliveryDetails().getDeliveryDate() : "уточняется"
+                items,
+                order.getTotalCost()
         );
         send(to, subject, text);
     }
@@ -41,6 +54,16 @@ public class OrderEmailService {
                 translateStatus(newStatus)
         );
         send(to, subject, text);
+    }
+
+    @Async
+    public void sendPasswordChanged(String email, String username) {
+        String subject = "Пароль изменён";
+        String text = String.format(
+                "Здравствуйте, %s!\n\nПароль от вашего аккаунта был успешно изменён.\n\nЕсли это были не вы — немедленно свяжитесь с поддержкой.",
+                username
+        );
+        send(email, subject, text);
     }
 
     private void send(String to, String subject, String text) {

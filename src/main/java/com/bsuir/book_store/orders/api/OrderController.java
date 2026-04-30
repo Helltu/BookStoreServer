@@ -2,7 +2,9 @@ package com.bsuir.book_store.orders.api;
 
 import com.bsuir.book_store.orders.api.dto.CreateOrderRequest;
 import com.bsuir.book_store.orders.api.dto.OrderAnalyticsResponse;
+import com.bsuir.book_store.orders.api.dto.UpdateDeliverySlotRequest;
 import com.bsuir.book_store.orders.api.dto.UpdateOrderStatusRequest;
+import com.bsuir.book_store.orders.api.dto.export.OrderExportDto;
 import jakarta.validation.Valid;
 import com.bsuir.book_store.orders.application.OrderService;
 import com.bsuir.book_store.orders.domain.Order;
@@ -96,6 +98,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderById(id, userDetails.getUsername()));
     }
 
+    @Operation(summary = "Экспорт всех заказов (Менеджер)", description = "Возвращает все заказы в формате JSON")
+    @GetMapping("/export")
+    @IsManager
+    public ResponseEntity<List<OrderExportDto>> exportOrders() {
+        return ResponseEntity.ok(orderService.exportOrders());
+    }
+
     @Operation(summary = "Отменить заказ (Клиент)", description = "Отмена заказа пользователем (только в статусе NEW)")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelOrder(
@@ -103,6 +112,43 @@ public class OrderController {
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         orderService.cancelOrder(id, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Обновить таймслот доставки (Менеджер)", description = "Устанавливает согласованное время доставки")
+    @PatchMapping("/{id}/delivery-slot")
+    @IsManager
+    public ResponseEntity<Void> updateDeliverySlot(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateDeliverySlotRequest request
+    ) {
+        orderService.updateDeliverySlot(id, request.getTimeSlot(), request.getDeliveryDate());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Запросить возврат (Клиент)", description = "Только для заказов в статусе DELIVERED")
+    @PatchMapping("/{id}/return-request")
+    public ResponseEntity<Void> requestReturn(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        orderService.requestReturn(id, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Подтвердить возврат (Менеджер)", description = "Переводит заказ в статус RETURNED, освобождает сток")
+    @PatchMapping("/{id}/return-approve")
+    @IsManager
+    public ResponseEntity<Void> approveReturn(@PathVariable UUID id) {
+        orderService.approveReturn(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "Отклонить возврат (Менеджер)", description = "Переводит заказ обратно в статус DELIVERED")
+    @PatchMapping("/{id}/return-reject")
+    @IsManager
+    public ResponseEntity<Void> rejectReturn(@PathVariable UUID id) {
+        orderService.rejectReturn(id);
         return ResponseEntity.ok().build();
     }
 }
