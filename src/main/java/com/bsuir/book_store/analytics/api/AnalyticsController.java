@@ -29,8 +29,9 @@ public class AnalyticsController {
     @IsManager
     public ResponseEntity<AnalyticsResponse> getDashboard(
             @RequestParam(required = false) LocalDate startDate,
-            @RequestParam(required = false) LocalDate endDate
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(defaultValue = "5") int lowStockThreshold
     ) {
-        return ResponseEntity.ok(analyticsService.getDashboardData(startDate, endDate));
+        return ResponseEntity.ok(analyticsService.getDashboardData(startDate, endDate, lowStockThreshold));
     }
 }

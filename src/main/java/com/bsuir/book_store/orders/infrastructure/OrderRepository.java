@@ -50,4 +50,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT SUM(o.totalCost) FROM Order o WHERE o.status = :status")
     java.math.BigDecimal sumTotalCostByStatus(@Param("status") OrderStatus status);
+
+    @Query("SELECT COUNT(DISTINCT o.user) FROM Order o WHERE o.status NOT IN :excludedStatuses AND (:from IS NULL OR o.createdAt >= :from) AND (:to IS NULL OR o.createdAt <= :to)")
+    long countUniqueCustomers(@Param("excludedStatuses") List<OrderStatus> excludedStatuses, @Param("from") java.sql.Timestamp from, @Param("to") java.sql.Timestamp to);
+
+    @Query("SELECT o.user.username, o.user.firstName, o.user.lastName, COUNT(o), SUM(o.totalCost) FROM Order o WHERE o.status NOT IN :excludedStatuses AND (:from IS NULL OR o.createdAt >= :from) AND (:to IS NULL OR o.createdAt <= :to) GROUP BY o.user.username, o.user.firstName, o.user.lastName ORDER BY SUM(o.totalCost) DESC")
+    List<Object[]> findTopCustomers(@Param("excludedStatuses") List<OrderStatus> excludedStatuses, @Param("from") java.sql.Timestamp from, @Param("to") java.sql.Timestamp to, Pageable pageable);
+
+    @Query("SELECT AVG(CAST(FUNCTION('TIMESTAMPDIFF', HOUR, o.createdAt, o.updatedAt) AS double)) FROM Order o WHERE o.status = :status AND (:from IS NULL OR o.createdAt >= :from) AND (:to IS NULL OR o.createdAt <= :to)")
+    Double avgDeliveryHours(@Param("status") OrderStatus status, @Param("from") java.sql.Timestamp from, @Param("to") java.sql.Timestamp to);
 }

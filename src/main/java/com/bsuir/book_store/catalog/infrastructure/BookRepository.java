@@ -20,4 +20,9 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
     List<Book> findByGenres_Id(UUID genreId);
     List<Book> findByAuthors_Id(UUID authorId);
     List<Book> findByPublisher_Id(UUID publisherId);
+
+    List<Book> findByStockQuantityLessThanEqualOrderByStockQuantityAsc(int threshold);
+
+    @Query("SELECT COUNT(b) FROM Book b WHERE b.stockQuantity = 0")
+    long countOutOfStock();
 }
