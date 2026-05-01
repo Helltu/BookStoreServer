@@ -88,7 +88,6 @@ public class OrderService {
                 && order.getStatus() != OrderStatus.CANCELLED;
 
         order.updateStatus(newStatus);
-        orderRepository.save(order);
 
         if (becomingCancelled) {
             order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
@@ -130,11 +129,11 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Order> getOrdersFiltered(OrderStatus status, String orderNumber,
+    public Page<Order> getOrdersFiltered(OrderStatus status, String orderNumber, String customerName,
                                           LocalDateTime from, LocalDateTime to, Pageable pageable) {
         Timestamp tsFrom = from != null ? Timestamp.valueOf(from) : null;
         Timestamp tsTo = to != null ? Timestamp.valueOf(to) : null;
-        Page<Order> orders = orderRepository.findWithFilters(status, orderNumber, tsFrom, tsTo, pageable);
+        Page<Order> orders = orderRepository.findWithFilters(status, orderNumber, customerName, tsFrom, tsTo, pageable);
         orders.forEach(o -> o.getOrderItems().size());
         return orders;
     }
@@ -172,7 +171,6 @@ public class OrderService {
         }
 
         order.requestReturn();
-        orderRepository.save(order);
         orderEmailService.sendStatusChanged(order, OrderStatus.RETURN_REQUESTED);
     }
 
@@ -182,7 +180,6 @@ public class OrderService {
                 .orElseThrow(() -> new DomainException("Заказ не найден"));
 
         order.approveReturn();
-        orderRepository.save(order);
         order.getOrderItems().forEach(item -> searchSyncService.syncBook(item.getBook()));
         orderEmailService.sendStatusChanged(order, OrderStatus.RETURNED);
     }
@@ -193,7 +190,6 @@ public class OrderService {
                 .orElseThrow(() -> new DomainException("Заказ не найден"));
 
         order.rejectReturn();
-        orderRepository.save(order);
         orderEmailService.sendStatusChanged(order, OrderStatus.DELIVERED);
     }
 
@@ -221,6 +217,7 @@ public class OrderService {
         }
         details.setDeliveryTimeSlot(timeSlot);
         details.setDeliveryDate(java.sql.Date.valueOf(deliveryDate));
+        orderEmailService.sendDeliverySlotAssigned(order);
     }
 
     @Transactional(readOnly = true)

@@ -16,6 +16,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -86,6 +87,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("Нарушение целостности данных (возможно, запись уже существует)", HttpStatus.CONFLICT, request);
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Object> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return buildErrorResponse("Размер загружаемого файла превышает допустимый лимит", HttpStatus.PAYLOAD_TOO_LARGE, request);
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<Object> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         return buildErrorResponse("Метод " + ex.getMethod() + " не поддерживается для этого URL", HttpStatus.METHOD_NOT_ALLOWED, request);
@@ -97,6 +103,20 @@ public class GlobalExceptionHandler {
         return buildErrorResponse("Внутренняя ошибка сервера. Обратитесь к администратору.", HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
+    private String translateStatus(HttpStatus status) {
+        return switch (status) {
+            case BAD_REQUEST -> "Неверный запрос";
+            case UNAUTHORIZED -> "Не авторизован";
+            case FORBIDDEN -> "Доступ запрещён";
+            case NOT_FOUND -> "Не найдено";
+            case METHOD_NOT_ALLOWED -> "Метод не поддерживается";
+            case CONFLICT -> "Конфликт данных";
+            case PAYLOAD_TOO_LARGE -> "Превышен размер запроса";
+            case INTERNAL_SERVER_ERROR -> "Внутренняя ошибка сервера";
+            default -> status.getReasonPhrase();
+        };
+    }
+
     private ResponseEntity<Object> buildErrorResponse(String message, HttpStatus status, HttpServletRequest request) {
         return buildErrorResponse(message, status, request, null);
     }
@@ -105,7 +125,7 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
+        body.put("error", translateStatus(status));
         body.put("message", message);
         body.put("path", request.getRequestURI());
 

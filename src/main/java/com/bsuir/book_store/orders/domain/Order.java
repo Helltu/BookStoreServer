@@ -111,6 +111,14 @@ public class Order {
         if (this.status == OrderStatus.RETURN_REQUESTED) {
             throw new DomainException("Для управления возвратом используйте соответствующие эндпоинты");
         }
+        if (newStatus == OrderStatus.SHIPPED) {
+            if (this.deliveryDetails == null
+                    || this.deliveryDetails.getDeliveryDate() == null
+                    || this.deliveryDetails.getDeliveryTimeSlot() == null
+                    || this.deliveryDetails.getDeliveryTimeSlot().isBlank()) {
+                throw new DomainException("Невозможно отправить заказ: не назначены дата и временной слот доставки");
+            }
+        }
 
         if (newStatus == OrderStatus.CANCELLED && this.status != OrderStatus.CANCELLED) {
             for (OrderItem item : this.orderItems) {

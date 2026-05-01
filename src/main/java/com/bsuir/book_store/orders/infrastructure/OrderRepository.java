@@ -16,27 +16,31 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByUserUsernameOrderByCreatedAtDesc(String username);
     Page<Order> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-    @Query("SELECT o FROM Order o WHERE " +
+    @Query("SELECT o FROM Order o LEFT JOIN o.deliveryDetails d WHERE " +
             "(:status IS NULL OR o.status = :status) AND " +
             "(:orderNumber IS NULL OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :orderNumber, '%'))) AND " +
+            "(:customerName IS NULL OR LOWER(d.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) AND " +
             "(:from IS NULL OR o.createdAt >= :from) AND " +
             "(:to IS NULL OR o.createdAt <= :to)")
     Page<Order> findWithFilters(
             @Param("status") OrderStatus status,
             @Param("orderNumber") String orderNumber,
+            @Param("customerName") String customerName,
             @Param("from") Timestamp from,
             @Param("to") Timestamp to,
             Pageable pageable
     );
 
-    @Query("SELECT o FROM Order o WHERE " +
+    @Query("SELECT o FROM Order o LEFT JOIN o.deliveryDetails d WHERE " +
             "(:status IS NULL OR o.status = :status) AND " +
             "(:orderNumber IS NULL OR LOWER(o.orderNumber) LIKE LOWER(CONCAT('%', :orderNumber, '%'))) AND " +
+            "(:customerName IS NULL OR LOWER(d.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) AND " +
             "(:from IS NULL OR o.createdAt >= :from) AND " +
             "(:to IS NULL OR o.createdAt <= :to)")
     List<Order> findAllWithFilters(
             @Param("status") OrderStatus status,
             @Param("orderNumber") String orderNumber,
+            @Param("customerName") String customerName,
             @Param("from") Timestamp from,
             @Param("to") Timestamp to
     );

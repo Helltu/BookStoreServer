@@ -64,11 +64,12 @@ public class OrderController {
     public ResponseEntity<Page<Order>> searchOrders(
             @RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String orderNumber,
+            @RequestParam(required = false) String customerName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(orderService.getOrdersFiltered(status, orderNumber, from, to, pageable));
+        return ResponseEntity.ok(orderService.getOrdersFiltered(status, orderNumber, customerName, from, to, pageable));
     }
 
     @Operation(summary = "Аналитика по заказам (Менеджер)", description = "Статистика по количеству и выручке заказов")

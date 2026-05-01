@@ -57,6 +57,30 @@ public class OrderEmailService {
     }
 
     @Async
+    public void sendDeliverySlotAssigned(Order order) {
+        String to = order.getUser().getEmail();
+        String subject = "Дата доставки заказа " + order.getOrderNumber() + " назначена";
+        var details = order.getDeliveryDetails();
+        String formattedDate = details.getDeliveryDate() != null
+                ? details.getDeliveryDate().toLocalDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale("ru")))
+                : "не указана";
+        String text = String.format(
+                "Здравствуйте, %s!\n\n" +
+                "По вашему заказу %s назначена доставка.\n\n" +
+                "Дата доставки: %s\n" +
+                "Временной слот: %s\n\n" +
+                "Адрес доставки: %s",
+                order.getUser().getFirstName() != null ? order.getUser().getFirstName() : order.getUser().getUsername(),
+                order.getOrderNumber(),
+                formattedDate,
+                details.getDeliveryTimeSlot() != null ? details.getDeliveryTimeSlot() : "не указан",
+                details.getAddressText()
+        );
+        send(to, subject, text);
+    }
+
+    @Async
     public void sendPasswordChanged(String email, String username) {
         String subject = "Пароль изменён";
         String text = String.format(
