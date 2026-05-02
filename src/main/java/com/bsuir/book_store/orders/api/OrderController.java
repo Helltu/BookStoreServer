@@ -116,6 +116,17 @@ public class OrderController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Отправить заказ (Менеджер)", description = "Устанавливает дату/слот доставки и переводит заказ в SHIPPED")
+    @PatchMapping("/{id}/ship")
+    @IsManager
+    public ResponseEntity<Void> shipOrder(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateDeliverySlotRequest request
+    ) {
+        orderService.shipOrder(id, request.getTimeSlot(), request.getDeliveryDate());
+        return ResponseEntity.ok().build();
+    }
+
     @Operation(summary = "Обновить таймслот доставки (Менеджер)", description = "Устанавливает согласованное время доставки")
     @PatchMapping("/{id}/delivery-slot")
     @IsManager

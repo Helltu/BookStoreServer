@@ -208,9 +208,19 @@ public class OrderService {
     }
 
     @Transactional
+    public void shipOrder(UUID orderId, String timeSlot, java.time.LocalDate deliveryDate) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
+        order.shipOrder(timeSlot, deliveryDate);
+        orderEmailService.sendDeliverySlotAssigned(order);
+        orderEmailService.sendStatusChanged(order, OrderStatus.SHIPPED);
+    }
+
+    @Transactional
     public void updateDeliverySlot(UUID orderId, String timeSlot, java.time.LocalDate deliveryDate) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new DomainException("Заказ не найден"));
+        order.guardImmutable();
         DeliveryDetails details = order.getDeliveryDetails();
         if (details == null) {
             throw new DomainException("У заказа нет данных доставки");

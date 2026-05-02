@@ -101,26 +101,32 @@ public class Order {
         details.setOrder(this);
     }
 
-    public void updateStatus(OrderStatus newStatus) {
-        if (this.status == OrderStatus.DELIVERED && newStatus == OrderStatus.CANCELLED) {
-            throw new DomainException("Cannot cancel an already delivered order");
-        }
+    public void guardImmutable() {
         if (this.status == OrderStatus.CANCELLED || this.status == OrderStatus.RETURNED) {
-            throw new DomainException("Cannot change status of a cancelled or returned order");
+            throw new DomainException("Заказ в статусе " + this.status + " не может быть изменён");
         }
+    }
+
+    public void updateStatus(OrderStatus newStatus) {
+        guardImmutable();
         if (this.status == OrderStatus.RETURN_REQUESTED) {
             throw new DomainException("Для управления возвратом используйте соответствующие эндпоинты");
         }
-        if (newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.DELIVERED) {
-            if (this.deliveryDetails == null
-                    || this.deliveryDetails.getDeliveryDate() == null
-                    || this.deliveryDetails.getDeliveryTimeSlot() == null
-                    || this.deliveryDetails.getDeliveryTimeSlot().isBlank()) {
-                throw new DomainException("Невозможно изменить статус: не назначены дата и временной слот доставки");
-            }
+
+        boolean validTransition = switch (this.status) {
+            case NEW -> newStatus == OrderStatus.PROCESSING || newStatus == OrderStatus.CANCELLED;
+            case PROCESSING -> newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.CANCELLED;
+            case SHIPPED -> newStatus == OrderStatus.DELIVERED || newStatus == OrderStatus.FAILED;
+            case FAILED -> newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.CANCELLED;
+            default -> false;
+        };
+
+        if (!validTransition) {
+            throw new DomainException(
+                    "Недопустимый переход статуса: " + this.status + " → " + newStatus);
         }
 
-        if (newStatus == OrderStatus.CANCELLED && this.status != OrderStatus.CANCELLED) {
+        if (newStatus == OrderStatus.CANCELLED) {
             for (OrderItem item : this.orderItems) {
                 item.getBook().releaseStock(item.getQuantity());
             }
@@ -135,6 +141,19 @@ public class Order {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    public void shipOrder(String timeSlot, java.time.LocalDate deliveryDate) {
+        guardImmutable();
+        if (this.status != OrderStatus.PROCESSING && this.status != OrderStatus.FAILED) {
+            throw new DomainException("Отправить можно только заказ в статусе PROCESSING или FAILED");
+        }
+        if (this.deliveryDetails == null) {
+            throw new DomainException("У заказа нет данных доставки");
+        }
+        this.deliveryDetails.setDeliveryTimeSlot(timeSlot);
+        this.deliveryDetails.setDeliveryDate(java.sql.Date.valueOf(deliveryDate));
+        this.status = OrderStatus.SHIPPED;
+    }
+
     public void cancelByUser() {
         if (this.status != OrderStatus.NEW) {
             throw new DomainException("Отменить заказ можно только пока он находится в статусе NEW");
@@ -143,6 +162,7 @@ public class Order {
     }
 
     public void requestReturn() {
+        guardImmutable();
         if (this.status != OrderStatus.DELIVERED) {
             throw new DomainException("Запросить возврат можно только для доставленных заказов");
         }

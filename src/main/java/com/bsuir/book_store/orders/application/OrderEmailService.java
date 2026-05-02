@@ -104,7 +104,7 @@ public class OrderEmailService {
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
-    }
+    }it
 
     private String translateStatus(OrderStatus status) {
         return switch (status) {
@@ -115,6 +115,7 @@ public class OrderEmailService {
             case CANCELLED -> "Отменён";
             case RETURN_REQUESTED -> "Запрошен возврат";
             case RETURNED -> "Возвращен";
+            case FAILED -> "Доставка не удалась";
         };
     }
 }
