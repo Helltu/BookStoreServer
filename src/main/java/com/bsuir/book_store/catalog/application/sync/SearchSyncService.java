@@ -1,21 +1,27 @@
 package com.bsuir.book_store.catalog.application.sync;
 
+import com.bsuir.book_store.catalog.application.embedding.EmbeddingService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SearchSyncService {
 
     private final BookElasticRepository elasticRepository;
+    private final EmbeddingService embeddingService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void syncBook(Book book) {
+        float[] embedding = computeEmbedding(book);
+
         BookDocument doc = BookDocument.builder()
                 .id(book.getId().toString())
                 .title(book.getTitle())
@@ -31,8 +37,27 @@ public class SearchSyncService {
                 .keywords(book.getKeywords().stream().toList())
                 .coverUrl(book.getCoverImage() != null ? book.getCoverImage().getUrl() : null)
                 .previewUrls(book.getPreviewImages() != null ? book.getPreviewImages().stream().map(com.bsuir.book_store.catalog.domain.model.Image::getUrl).toList() : java.util.List.of())
+                .descriptionEmbedding(embedding)
                 .build();
 
         elasticRepository.save(doc);
+    }
+
+    private float[] computeEmbedding(Book book) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            if (book.getTitle() != null) sb.append(book.getTitle()).append(". ");
+            if (book.getDescription() != null) sb.append(book.getDescription());
+            if (book.getGenres() != null) {
+                String genres = book.getGenres().stream().map(g -> g.getName()).reduce((a, b) -> a + ", " + b).orElse("");
+                if (!genres.isBlank()) sb.append(" Жанры: ").append(genres);
+            }
+            String text = sb.toString().trim();
+            if (text.isBlank()) return null;
+            return embeddingService.embed(text);
+        } catch (Exception e) {
+            log.warn("Failed to compute embedding for book {}: {}", book.getId(), e.getMessage());
+            return null;
+        }
     }
 }

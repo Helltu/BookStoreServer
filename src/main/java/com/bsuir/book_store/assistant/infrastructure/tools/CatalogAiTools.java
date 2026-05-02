@@ -3,6 +3,7 @@ package com.bsuir.book_store.assistant.infrastructure.tools;
 import com.bsuir.book_store.assistant.infrastructure.cache.UserProfileCache;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
+import com.bsuir.book_store.catalog.application.SemanticSearchService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 public class CatalogAiTools {
 
     private final CatalogQueryService catalogQueryService;
+    private final SemanticSearchService semanticSearchService;
     private final UserProfileCache profileCache;
 
     @Value("${app.frontend.url}")
@@ -38,29 +40,30 @@ public class CatalogAiTools {
     private static final Pattern CYRILLIC_PATTERN = Pattern.compile("\\p{IsCyrillic}");
 
     @Tool("""
-          Поиск книг с фильтрами. Все параметры опциональны — заполняй только те, что явно следуют из запроса пользователя.
-          Если в запросе нет конкретного критерия — оставь параметр пустым (null/пустая строка).
+          Структурный поиск книг по КОНКРЕТНЫМ критериям: название, автор, жанр, ценовой диапазон, язык.
+          ⚠️ НЕ используй для абстрактных/эмоциональных запросов ("весёлое", "грустное", "атмосферное", "про одиночество") —
+          для таких запросов есть отдельный инструмент `searchBooksSemantic`.
+          Все параметры — строки. Пустая строка = критерий не указан.
           Примеры:
-            "что-то фантастическое до 30 рублей" -> query="фантастика", maxPrice=30, language=null
-            "книги Толстого" -> query="Толстой", остальное null
+            "Толстой" -> query="Толстой"
+            "фантастика до 30 рублей" -> query="фантастика", maxPrice="30"
             "зарубежные детективы" -> query="детектив", language="EN"
           """)
     public String searchBooks(
-            @P("Текстовый запрос: ключевые слова, название, автор. Может быть пустым если фильтруем только по жанру/цене.") String query,
-            @P("Язык книги: RU (русский), BE (белорусский), EN (английский / зарубежные). Null если язык не важен.") String language,
-            @P("Минимальная цена в BYN. Null если не указано.") BigDecimal minPrice,
-            @P("Максимальная цена в BYN. Null если не указано.") BigDecimal maxPrice,
-            @P("Список жанров через запятую (например: 'Фантастика, Детектив'). Null если не указано.") String genres,
-            @P("Только книги в наличии (true) или включая отсутствующие (false/null).") Boolean inStock
+            @P("Текстовый запрос: ключевые слова, название, автор. Может быть пустой строкой если фильтруем только по жанру/цене.") String query,
+            @P("Язык книги: RU (русский), BE (белорусский), EN (английский / зарубежные). Пустая строка если язык не важен.") String language,
+            @P("Минимальная цена в BYN как число (например '20'). Пустая строка если не указано.") String minPrice,
+            @P("Максимальная цена в BYN как число (например '50'). Пустая строка если не указано.") String maxPrice,
+            @P("Список жанров через запятую (например: 'Фантастика, Детектив'). Пустая строка если не указано.") String genres
     ) {
-        log.info("AI tool [searchBooks] query='{}', lang={}, price=[{}..{}], genres={}, inStock={}",
-                query, language, minPrice, maxPrice, genres, inStock);
+        log.info("AI tool [searchBooks] query='{}', lang={}, price=[{}..{}], genres={}",
+                query, language, minPrice, maxPrice, genres);
 
         BookSearchCriteria criteria = new BookSearchCriteria();
         criteria.setQuery(query == null ? "" : query);
-        criteria.setMinPrice(minPrice);
-        criteria.setMaxPrice(maxPrice);
-        criteria.setInStock(inStock);
+        criteria.setMinPrice(parseDecimal(minPrice));
+        criteria.setMaxPrice(parseDecimal(maxPrice));
+        criteria.setInStock(true);
         if (genres != null && !genres.isBlank()) {
             criteria.setGenres(Arrays.stream(genres.split(","))
                     .map(String::trim)
@@ -83,6 +86,10 @@ public class CatalogAiTools {
                     language, minPrice, maxPrice, genres);
         }
 
+        return formatResults(results);
+    }
+
+    private String formatResults(List<BookDocument> results) {
         return results.stream()
                 .map(b -> {
                     String bookLang = detectRealLanguage(b);
@@ -103,6 +110,39 @@ public class CatalogAiTools {
                             truncate(b.getDescription(), 120));
                 })
                 .collect(Collectors.joining("\n---\n"));
+    }
+
+    @Tool("""
+          🎯 ОСНОВНОЙ инструмент для запросов про НАСТРОЕНИЕ / АТМОСФЕРУ / ЭМОЦИИ книги.
+          Используй когда пользователь хочет:
+            - "что-нибудь весёлое / смешное / лёгкое"
+            - "что-то грустное / трогательное / меланхоличное"
+            - "атмосферное / мрачное / уютное / страшное"
+            - "после которой хочется плакать / задуматься"
+            - "похоже на <название другой книги>"
+            - "про одиночество / любовь / поиск себя" (без конкретного жанра)
+          ⚠️ ВАЖНО: переводи запрос на АНГЛИЙСКИЙ — модель работает лучше на английском.
+          Передавай 3-5 ключевых описательных слов на английском.
+          Примеры:
+            "весёлое" → "funny humorous lighthearted comedy"
+            "грустное" → "sad melancholic emotional bittersweet"
+            "атмосферное про город" → "atmospheric urban moody"
+          """)
+    public String searchBooksSemantic(@P("Натуральный запрос на естественном языке") String naturalQuery) {
+        log.info("AI tool [searchBooksSemantic] query='{}'", naturalQuery);
+
+        Set<UUID> excluded = getExcludedBookIds();
+        List<BookDocument> results = semanticSearchService.semanticSearch(naturalQuery, 20)
+                .stream()
+                .filter(b -> b.getStockQuantity() != null && b.getStockQuantity() > 0)
+                .filter(b -> !excluded.contains(toUuid(b.getId())))
+                .limit(7)
+                .collect(Collectors.toList());
+
+        if (results.isEmpty()) {
+            return "По смысловому поиску ничего подходящего не найдено. Попробуй переформулировать или используй обычный searchBooks.";
+        }
+        return formatResults(results);
     }
 
     @Tool("""
@@ -147,7 +187,13 @@ public class CatalogAiTools {
         );
     }
 
-    private String normalizeLanguage(String language) {
+    private BigDecimal parseDecimal(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return new BigDecimal(s.trim().replace(",", ".")); }
+        catch (NumberFormatException e) { return null; }
+    }
+
+private String normalizeLanguage(String language) {
         if (language == null || language.isBlank()) return null;
         String l = language.trim().toUpperCase();
         if (l.startsWith("RU") || l.contains("РУС")) return "RUSSIAN";

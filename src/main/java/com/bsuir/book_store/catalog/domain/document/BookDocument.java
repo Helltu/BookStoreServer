@@ -73,4 +73,7 @@ public class BookDocument {
 
     @Field(type = FieldType.Keyword, index = false)
     private List<String> previewUrls;
+
+    @Field(type = FieldType.Dense_Vector, dims = 384)
+    private float[] descriptionEmbedding;
 }

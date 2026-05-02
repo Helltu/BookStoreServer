@@ -12,11 +12,14 @@ import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
 import com.bsuir.book_store.catalog.application.sync.SearchSyncService;
+import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import com.bsuir.book_store.catalog.infrastructure.PublisherRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,7 @@ public class CatalogImportExportService {
     private final PublisherRepository publisherRepository;
     private final EntityManager entityManager;
     private final SearchSyncService searchSyncService;
+    private final ElasticsearchOperations elasticsearchOperations;
 
     // ---- EXPORT ----
 
@@ -227,5 +231,22 @@ public class CatalogImportExportService {
             searchSyncService.syncBook(book);
         }
         return all.size();
+    }
+
+    public void recreateBookIndex() {
+        IndexOperations indexOps = elasticsearchOperations.indexOps(BookDocument.class);
+        if (indexOps.exists()) {
+            log.info("Deleting existing 'books' index...");
+            indexOps.delete();
+        }
+        log.info("Creating fresh 'books' index with current mapping...");
+        indexOps.create();
+        indexOps.putMapping(indexOps.createMapping(BookDocument.class));
+    }
+
+    @Transactional
+    public int recreateAndReindexBooks() {
+        recreateBookIndex();
+        return reindexAllBooks();
     }
 }
