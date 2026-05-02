@@ -1,6 +1,7 @@
 package com.bsuir.book_store.reviews.api;
 
 import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
+import com.bsuir.book_store.reviews.api.dto.ReviewResponse;
 import com.bsuir.book_store.reviews.application.ReviewService;
 import com.bsuir.book_store.reviews.domain.Review;
 import com.bsuir.book_store.shared.security.annotations.IsManager;
@@ -40,8 +41,22 @@ public class ReviewController {
             description = "Возвращает список всех отзывов для указанной книги, отсортированных по дате."
     )
     @GetMapping("/book/{bookId}")
-    public ResponseEntity<List<Review>> getBookReviews(@PathVariable UUID bookId) {
-        return ResponseEntity.ok(reviewService.getReviewsForBook(bookId));
+    public ResponseEntity<List<ReviewResponse>> getBookReviews(@PathVariable UUID bookId) {
+        return ResponseEntity.ok(reviewService.getReviewsForBook(bookId).stream()
+                .map(ReviewResponse::from)
+                .toList());
+    }
+
+    @Operation(
+            summary = "Проверить возможность оставить отзыв",
+            description = "Возвращает true, если книга доставлена и отзыв ещё не написан. Требуется авторизация."
+    )
+    @GetMapping("/can-review")
+    public ResponseEntity<Boolean> canReview(
+            @RequestParam UUID bookId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(reviewService.canReview(bookId, userDetails.getUsername()));
     }
 
     @Operation(

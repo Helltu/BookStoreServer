@@ -59,4 +59,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT AVG(CAST(FUNCTION('TIMESTAMPDIFF', HOUR, o.createdAt, o.updatedAt) AS double)) FROM Order o WHERE o.status = :status AND (:from IS NULL OR o.createdAt >= :from) AND (:to IS NULL OR o.createdAt <= :to)")
     Double avgDeliveryHours(@Param("status") OrderStatus status, @Param("from") java.sql.Timestamp from, @Param("to") java.sql.Timestamp to);
+
+    @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi WHERE o.user.username = :username AND oi.bookId = :bookId AND o.status IN (com.bsuir.book_store.orders.domain.OrderStatus.DELIVERED, com.bsuir.book_store.orders.domain.OrderStatus.RETURNED)")
+    boolean existsDeliveredOrderForUserAndBook(@Param("username") String username, @Param("bookId") UUID bookId);
 }

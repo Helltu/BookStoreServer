@@ -111,12 +111,12 @@ public class Order {
         if (this.status == OrderStatus.RETURN_REQUESTED) {
             throw new DomainException("Для управления возвратом используйте соответствующие эндпоинты");
         }
-        if (newStatus == OrderStatus.SHIPPED) {
+        if (newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.DELIVERED) {
             if (this.deliveryDetails == null
                     || this.deliveryDetails.getDeliveryDate() == null
                     || this.deliveryDetails.getDeliveryTimeSlot() == null
                     || this.deliveryDetails.getDeliveryTimeSlot().isBlank()) {
-                throw new DomainException("Невозможно отправить заказ: не назначены дата и временной слот доставки");
+                throw new DomainException("Невозможно изменить статус: не назначены дата и временной слот доставки");
             }
         }
 

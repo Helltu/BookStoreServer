@@ -47,11 +47,15 @@ public class OrderEmailService {
     public void sendStatusChanged(Order order, OrderStatus newStatus) {
         String to = order.getUser().getEmail();
         String subject = "Статус заказа " + order.getOrderNumber() + " изменён";
+        String extra = newStatus == OrderStatus.DELIVERED
+                ? "\n\nНадеемся, вам понравились книги! Не забудьте оставить отзыв — это поможет другим читателям сделать правильный выбор."
+                : "";
         String text = String.format(
-                "Здравствуйте, %s!\n\nСтатус вашего заказа %s изменён на: %s.",
+                "Здравствуйте, %s!\n\nСтатус вашего заказа %s изменён на: %s.%s",
                 order.getUser().getFirstName() != null ? order.getUser().getFirstName() : order.getUser().getUsername(),
                 order.getOrderNumber(),
-                translateStatus(newStatus)
+                translateStatus(newStatus),
+                extra
         );
         send(to, subject, text);
     }
