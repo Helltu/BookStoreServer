@@ -1,15 +1,25 @@
 package com.bsuir.book_store.assistant.infrastructure.tools;
 
+import com.bsuir.book_store.assistant.infrastructure.cache.UserProfileCache;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -19,40 +29,76 @@ import java.util.stream.Collectors;
 public class CatalogAiTools {
 
     private final CatalogQueryService catalogQueryService;
+    private final UserProfileCache profileCache;
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     private static final Pattern BELARUSIAN_PATTERN = Pattern.compile("[ўЎіІ']");
     private static final Pattern CYRILLIC_PATTERN = Pattern.compile("\\p{IsCyrillic}");
 
     @Tool("""
-          Инструмент поиска книг. 
-          Ассистент должен сам решать, на каком языке искать, исходя из контекста диалога.
-          
-          РЕКОМЕНДАЦИИ ПО ИСПОЛЬЗОВАНИЮ:
-          1. Если пользователь ищет конкретную книгу на русском/белорусском -> передавай название как есть.
-          2. Если пользователь ищет IT-литературу или международный бестселлер -> попробуй найти оригинал на английском ИЛИ перевод.
-          3. Если результатов мало -> попробуй перефразировать запрос или перевести ключевые слова.
+          Поиск книг с фильтрами. Все параметры опциональны — заполняй только те, что явно следуют из запроса пользователя.
+          Если в запросе нет конкретного критерия — оставь параметр пустым (null/пустая строка).
+          Примеры:
+            "что-то фантастическое до 30 рублей" -> query="фантастика", maxPrice=30, language=null
+            "книги Толстого" -> query="Толстой", остальное null
+            "зарубежные детективы" -> query="детектив", language="EN"
           """)
-    public String searchBooks(String query) {
-        log.info("AI tool [searchBooks] called with query: '{}'", query);
+    public String searchBooks(
+            @P("Текстовый запрос: ключевые слова, название, автор. Может быть пустым если фильтруем только по жанру/цене.") String query,
+            @P("Язык книги: RU (русский), BE (белорусский), EN (английский / зарубежные). Null если язык не важен.") String language,
+            @P("Минимальная цена в BYN. Null если не указано.") BigDecimal minPrice,
+            @P("Максимальная цена в BYN. Null если не указано.") BigDecimal maxPrice,
+            @P("Список жанров через запятую (например: 'Фантастика, Детектив'). Null если не указано.") String genres,
+            @P("Только книги в наличии (true) или включая отсутствующие (false/null).") Boolean inStock
+    ) {
+        log.info("AI tool [searchBooks] query='{}', lang={}, price=[{}..{}], genres={}, inStock={}",
+                query, language, minPrice, maxPrice, genres, inStock);
 
         BookSearchCriteria criteria = new BookSearchCriteria();
-        criteria.setQuery(query);
+        criteria.setQuery(query == null ? "" : query);
+        criteria.setMinPrice(minPrice);
+        criteria.setMaxPrice(maxPrice);
+        criteria.setInStock(inStock);
+        if (genres != null && !genres.isBlank()) {
+            criteria.setGenres(Arrays.stream(genres.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList()));
+        }
 
-        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 7)).getContent();
+        Set<UUID> excluded = getExcludedBookIds();
+        String langFilter = normalizeLanguage(language);
+
+        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 30)).getContent()
+                .stream()
+                .filter(b -> !excluded.contains(toUuid(b.getId())))
+                .filter(b -> langFilter == null || detectRealLanguage(b).startsWith(langFilter))
+                .limit(7)
+                .collect(Collectors.toList());
 
         if (results.isEmpty()) {
-            return String.format("По запросу '%s' ничего не найдено. Попробуй изменить язык запроса (например, с русского на английский) или упростить его.", query);
+            return String.format("По запросу не найдено книг (с учётом фильтров: язык=%s, цена=[%s..%s], жанры=%s). Попробуй ослабить фильтры или изменить ключевые слова.",
+                    language, minPrice, maxPrice, genres);
         }
 
         return results.stream()
-                .limit(7)
                 .map(b -> {
-                    String language = detectRealLanguage(b);
-                    return String.format("ID: %s | Название: %s | Автор: %s | Язык издания: %s | Цена: %s BYN | Описание: %s",
+                    String bookLang = detectRealLanguage(b);
+                    String authorsStr = b.getAuthors().stream()
+                            .map(a -> String.format("[%s](%s/author/%s)", a, frontendUrl, URLEncoder.encode(a, StandardCharsets.UTF_8).replace("+", "%20")))
+                            .collect(Collectors.joining(", "));
+                    String genresStr = b.getGenres().stream()
+                            .map(g -> String.format("[%s](%s/genre/%s)", g, frontendUrl, URLEncoder.encode(g, StandardCharsets.UTF_8).replace("+", "%20")))
+                            .collect(Collectors.joining(", "));
+                    return String.format("bookUrl: %s/book/%s | Название: %s | Автор: %s | Жанры: %s | Язык: %s | Цена: %s BYN | Описание: %s",
+                            frontendUrl,
                             b.getId(),
                             b.getTitle(),
-                            String.join(", ", b.getAuthors()),
-                            language,
+                            authorsStr,
+                            genresStr,
+                            bookLang,
                             b.getPrice(),
                             truncate(b.getDescription(), 120));
                 })
@@ -99,6 +145,28 @@ public class CatalogAiTools {
                 book.getPrice(),
                 book.getDescription()
         );
+    }
+
+    private String normalizeLanguage(String language) {
+        if (language == null || language.isBlank()) return null;
+        String l = language.trim().toUpperCase();
+        if (l.startsWith("RU") || l.contains("РУС")) return "RUSSIAN";
+        if (l.startsWith("BE") || l.startsWith("BY") || l.contains("БЕЛ")) return "BELARUSIAN";
+        if (l.startsWith("EN") || l.contains("АНГЛ") || l.contains("ЗАРУБЕЖ")) return "ENGLISH";
+        return null;
+    }
+
+    private UUID toUuid(String id) {
+        try { return UUID.fromString(id); } catch (Exception e) { return null; }
+    }
+
+    private Set<UUID> getExcludedBookIds() {
+        try {
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            return profileCache.get(username).getExcludedBookIds();
+        } catch (Exception e) {
+            return Set.of();
+        }
     }
 
     private String truncate(String text, int length) {
