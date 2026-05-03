@@ -104,7 +104,7 @@ public class OrderEmailService {
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
-    }it
+    }
 
     private String translateStatus(OrderStatus status) {
         return switch (status) {
