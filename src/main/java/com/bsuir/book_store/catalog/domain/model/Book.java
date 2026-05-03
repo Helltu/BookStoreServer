@@ -74,6 +74,31 @@ public class Book {
     @Column(name = "keyword")
     private Set<String> keywords = new HashSet<>();
 
+    @Column(name = "pages_count")
+    private Integer pagesCount;
+
+    @Column(name = "format")
+    @Enumerated(EnumType.STRING)
+    private BookFormat format;
+
+    @Column(name = "weight")
+    private Double weight;
+
+    @Column(name = "dimensions")
+    private String dimensions;
+
+    @Column(name = "age_rating")
+    private String ageRating;
+
+    @Column(name = "publication_year")
+    private Integer publicationYear;
+
+    @Column(name = "language")
+    private String language;
+
+    @Column(name = "original_language")
+    private String originalLanguage;
+
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "cover_image_id")
     private Image coverImage;
@@ -109,7 +134,7 @@ public class Book {
         this.cost = newPrice;
     }
 
-    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords, Image coverImage, List<Image> previewImages) {
+    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords, Image coverImage, List<Image> previewImages, Integer pagesCount, BookFormat format, Double weight, String dimensions, String ageRating, Integer publicationYear, String language, String originalLanguage) {
         if (title != null && !title.isBlank()) {
             this.title = title;
         }
@@ -148,6 +173,31 @@ public class Book {
             }
             this.previewImages.clear();
             this.previewImages.addAll(previewImages);
+        }
+        
+        if (pagesCount != null) {
+            this.pagesCount = pagesCount;
+        }
+        if (format != null) {
+            this.format = format;
+        }
+        if (weight != null) {
+            this.weight = weight;
+        }
+        if (dimensions != null) {
+            this.dimensions = dimensions;
+        }
+        if (ageRating != null) {
+            this.ageRating = ageRating;
+        }
+        if (publicationYear != null) {
+            this.publicationYear = publicationYear;
+        }
+        if (language != null) {
+            this.language = language;
+        }
+        if (originalLanguage != null) {
+            this.originalLanguage = originalLanguage;
         }
     }
 

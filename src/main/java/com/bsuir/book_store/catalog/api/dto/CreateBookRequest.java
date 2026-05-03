@@ -1,5 +1,6 @@
 package com.bsuir.book_store.catalog.api.dto;
 
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,6 +25,30 @@ public class CreateBookRequest {
 
     @Schema(description = "Количество на складе")
     private int stock;
+
+    @Schema(description = "Количество страниц")
+    private Integer pagesCount;
+
+    @Schema(description = "Формат издания")
+    private BookFormat format;
+
+    @Schema(description = "Вес книги в граммах")
+    private Double weight;
+
+    @Schema(description = "Размеры книги")
+    private String dimensions;
+
+    @Schema(description = "Возрастное ограничение")
+    private String ageRating;
+
+    @Schema(description = "Год издания")
+    private Integer publicationYear;
+
+    @Schema(description = "Язык издания")
+    private String language;
+
+    @Schema(description = "Язык оригинала")
+    private String originalLanguage;
 
     @Schema(description = "ID авторов", example = "[]")
     private List<UUID> authorIds;

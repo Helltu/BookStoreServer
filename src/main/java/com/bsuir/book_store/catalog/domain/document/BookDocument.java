@@ -1,5 +1,6 @@
 package com.bsuir.book_store.catalog.domain.document;
 
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
@@ -67,6 +68,30 @@ public class BookDocument {
             otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) }
     )
     private List<String> keywords;
+
+    @Field(type = FieldType.Integer, index = false)
+    private Integer pagesCount;
+
+    @Field(type = FieldType.Keyword)
+    private BookFormat format;
+
+    @Field(type = FieldType.Double, index = false)
+    private Double weight;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String dimensions;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String ageRating;
+
+    @Field(type = FieldType.Integer, index = false)
+    private Integer publicationYear;
+
+    @Field(type = FieldType.Keyword)
+    private String language;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String originalLanguage;
 
     @Field(type = FieldType.Keyword, index = false)
     private String coverUrl;

@@ -87,6 +87,14 @@ public class CatalogCommandService {
                 .keywords(keywords)
                 .coverImage(cover)
                 .previewImages(previews)
+                .pagesCount(request.getPagesCount())
+                .format(request.getFormat())
+                .weight(request.getWeight())
+                .dimensions(request.getDimensions())
+                .ageRating(request.getAgeRating())
+                .publicationYear(request.getPublicationYear())
+                .language(request.getLanguage())
+                .originalLanguage(request.getOriginalLanguage())
                 .build();
 
         book = bookRepository.save(book);
@@ -145,7 +153,10 @@ public class CatalogCommandService {
         book.updateDetails(
                 request.getTitle(), request.getDescription(),
                 request.getPrice(), request.getStock(),
-                authors, genres, publisher, keywords, cover, previews
+                authors, genres, publisher, keywords, cover, previews,
+                request.getPagesCount(), request.getFormat(), request.getWeight(),
+                request.getDimensions(), request.getAgeRating(), request.getPublicationYear(),
+                request.getLanguage(), request.getOriginalLanguage()
         );
 
         bookRepository.save(book);
@@ -209,7 +220,7 @@ public class CatalogCommandService {
         if (quantity < 0) throw new DomainException("Количество на складе не может быть отрицательным");
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
-        book.updateDetails(null, null, null, quantity, null, null, null, null, null, null);
+        book.updateDetails(null, null, null, quantity, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         bookRepository.save(book);
         searchSyncService.syncBook(book);
     }
