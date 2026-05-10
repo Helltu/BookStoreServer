@@ -99,7 +99,10 @@ public class CatalogAiTools {
                     String genresStr = b.getGenres().stream()
                             .map(g -> String.format("[%s](%s/genre/%s)", g, frontendUrl, URLEncoder.encode(g, StandardCharsets.UTF_8).replace("+", "%20")))
                             .collect(Collectors.joining(", "));
-                    return String.format("bookUrl: %s/book/%s | Название: %s | Автор: %s | Жанры: %s | Язык: %s | Цена: %s BYN | Описание: %s",
+                    String rating = (b.getAverageRating() != null && b.getTotalReviews() != null)
+                            ? String.format("%.1f/5 (%d отзывов)", b.getAverageRating(), b.getTotalReviews())
+                            : "нет оценок";
+                    return String.format("bookUrl: %s/book/%s | Название: %s | Автор: %s | Жанры: %s | Язык: %s | Цена: %s BYN | Рейтинг: %s | Описание: %s",
                             frontendUrl,
                             b.getId(),
                             b.getTitle(),
@@ -107,6 +110,7 @@ public class CatalogAiTools {
                             genresStr,
                             bookLang,
                             b.getPrice(),
+                            rating,
                             truncate(b.getDescription(), 120));
                 })
                 .collect(Collectors.joining("\n---\n"));
@@ -164,6 +168,9 @@ public class CatalogAiTools {
         BookDocument book = results.get(0);
         String language = detectRealLanguage(book);
 
+        String rating = (book.getAverageRating() != null && book.getTotalReviews() != null)
+                ? String.format("%.1f/5 (%d отзывов)", book.getAverageRating(), book.getTotalReviews())
+                : "нет оценок";
         return String.format("""
                 --- ПОДРОБНАЯ ИНФОРМАЦИЯ ---
                 ID: %s
@@ -172,7 +179,8 @@ public class CatalogAiTools {
                 Жанры: %s
                 Язык издания: %s
                 Цена: %s BYN
-                
+                Рейтинг: %s
+
                 Полная аннотация:
                 %s
                 ----------------------------
@@ -183,6 +191,7 @@ public class CatalogAiTools {
                 String.join(", ", book.getGenres()),
                 language,
                 book.getPrice(),
+                rating,
                 book.getDescription()
         );
     }

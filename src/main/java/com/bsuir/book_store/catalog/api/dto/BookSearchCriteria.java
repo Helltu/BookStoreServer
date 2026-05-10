@@ -1,5 +1,8 @@
 package com.bsuir.book_store.catalog.api.dto;
 
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -28,4 +31,23 @@ public class BookSearchCriteria {
 
     @Schema(description = "Только книги в наличии", example = "true")
     private Boolean inStock;
+
+    @Pattern(regexp = "^[a-z]{2}$", message = "language должен быть кодом ISO 639-1 из двух строчных букв (например, 'ru', 'en')")
+    @Schema(description = "Язык издания (код языка, например 'ru', 'en')", example = "")
+    private String language;
+
+    @Schema(description = "Формат книги (HARDCOVER, SOFTCOVER)", example = "")
+    private BookFormat format;
+
+    @Schema(description = "Возрастной рейтинг", example = "")
+    private AgeRating ageRating;
+
+    @Schema(description = "Минимальный год публикации", example = "")
+    private Integer minYear;
+
+    @Schema(description = "Максимальный год публикации", example = "")
+    private Integer maxYear;
+
+    @Schema(description = "Минимальный средний рейтинг (0.0 - 5.0)", example = "")
+    private Double minRating;
 }

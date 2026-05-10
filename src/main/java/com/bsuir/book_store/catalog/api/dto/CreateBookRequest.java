@@ -1,6 +1,8 @@
 package com.bsuir.book_store.catalog.api.dto;
 
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
 import com.bsuir.book_store.catalog.domain.model.BookFormat;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
@@ -39,14 +41,16 @@ public class CreateBookRequest {
     private String dimensions;
 
     @Schema(description = "Возрастное ограничение")
-    private String ageRating;
+    private AgeRating ageRating;
 
     @Schema(description = "Год издания")
     private Integer publicationYear;
 
+    @Pattern(regexp = "^[a-z]{2}$", message = "language должен быть кодом ISO 639-1 из двух строчных букв (например, 'ru', 'en')")
     @Schema(description = "Язык издания")
     private String language;
 
+    @Pattern(regexp = "^[a-z]{2}$", message = "originalLanguage должен быть кодом ISO 639-1 из двух строчных букв (например, 'ru', 'en')")
     @Schema(description = "Язык оригинала")
     private String originalLanguage;
 

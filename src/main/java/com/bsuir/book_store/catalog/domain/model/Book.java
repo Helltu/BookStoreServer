@@ -88,7 +88,8 @@ public class Book {
     private String dimensions;
 
     @Column(name = "age_rating")
-    private String ageRating;
+    @Enumerated(EnumType.STRING)
+    private AgeRating ageRating;
 
     @Column(name = "publication_year")
     private Integer publicationYear;
@@ -134,7 +135,7 @@ public class Book {
         this.cost = newPrice;
     }
 
-    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords, Image coverImage, List<Image> previewImages, Integer pagesCount, BookFormat format, Double weight, String dimensions, String ageRating, Integer publicationYear, String language, String originalLanguage) {
+    public void updateDetails(String title, String description, BigDecimal cost, Integer stockQuantity, Set<Author> authors, Set<Genre> genres, Publisher publisher, Set<String> keywords, Image coverImage, List<Image> previewImages, Integer pagesCount, BookFormat format, Double weight, String dimensions, AgeRating ageRating, Integer publicationYear, String language, String originalLanguage) {
         if (title != null && !title.isBlank()) {
             this.title = title;
         }

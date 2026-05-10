@@ -9,16 +9,21 @@ import com.bsuir.book_store.catalog.api.dto.UpdateBookRequest;
 import com.bsuir.book_store.catalog.api.dto.GenerateDescriptionRequest;
 import com.bsuir.book_store.catalog.api.dto.GenerateKeywordsRequest;
 import com.bsuir.book_store.catalog.api.dto.KeywordRequest;
+import com.bsuir.book_store.catalog.api.dto.LanguageOption;
+import com.bsuir.book_store.catalog.api.dto.YearRangeResponse;
 import com.bsuir.book_store.catalog.application.CatalogCommandService;
 import com.bsuir.book_store.catalog.application.CatalogQueryService;
 import com.bsuir.book_store.catalog.application.ImportBookService;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
 import com.bsuir.book_store.catalog.domain.model.Book;
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import com.bsuir.book_store.shared.security.annotations.IsManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,9 +62,39 @@ public class CatalogController {
         return ResponseEntity.ok(queryService.getPriceRange());
     }
 
+    @Operation(summary = "Диапазон годов", description = "Минимальный и максимальный год публикации для слайдера фильтрации")
+    @GetMapping("/year-range")
+    public ResponseEntity<YearRangeResponse> getYearRange() {
+        return ResponseEntity.ok(queryService.getYearRange());
+    }
+
+    @Operation(summary = "Доступные языки", description = "Список языков изданий, присутствующих в каталоге")
+    @GetMapping("/languages")
+    public ResponseEntity<List<String>> getLanguages() {
+        return ResponseEntity.ok(queryService.getAvailableLanguages());
+    }
+
+    @Operation(summary = "Поддерживаемые языки", description = "Статический список языков для select-а в форме создания/редактирования книги")
+    @GetMapping("/languages/supported")
+    public ResponseEntity<List<LanguageOption>> getSupportedLanguages() {
+        return ResponseEntity.ok(queryService.getSupportedLanguages());
+    }
+
+    @Operation(summary = "Форматы книг", description = "Список допустимых форматов (HARDCOVER, SOFTCOVER)")
+    @GetMapping("/formats")
+    public ResponseEntity<List<BookFormat>> getFormats() {
+        return ResponseEntity.ok(queryService.getAvailableFormats());
+    }
+
+    @Operation(summary = "Возрастные рейтинги", description = "Список допустимых возрастных рейтингов (0+, 6+, 12+, 16+, 18+)")
+    @GetMapping("/age-ratings")
+    public ResponseEntity<List<AgeRating>> getAgeRatings() {
+        return ResponseEntity.ok(queryService.getAvailableAgeRatings());
+    }
+
     @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params)")
     @GetMapping("/search")
-    public ResponseEntity<Page<BookDocument>> search(@ModelAttribute BookSearchCriteria criteria,
+    public ResponseEntity<Page<BookDocument>> search(@Valid @ModelAttribute BookSearchCriteria criteria,
                                                      Pageable pageable) {
         return ResponseEntity.ok(queryService.search(criteria, pageable));
     }
@@ -74,7 +109,7 @@ public class CatalogController {
     @PostMapping(value = "/books", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
     public ResponseEntity<UUID> createBook(
-            @ModelAttribute CreateBookRequest request
+            @Valid @ModelAttribute CreateBookRequest request
     ) {
         return ResponseEntity.ok(commandService.createBook(request, request.getCoverFile(), request.getPreviewFiles()));
     }
@@ -83,8 +118,8 @@ public class CatalogController {
     @PutMapping(value = "/books/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @IsManager
     public ResponseEntity<Void> updateBook(
-            @PathVariable UUID id, 
-            @ModelAttribute UpdateBookRequest request
+            @PathVariable UUID id,
+            @Valid @ModelAttribute UpdateBookRequest request
     ) {
         commandService.updateBook(id, request, request.getCoverFile(), request.getPreviewFiles());
         return ResponseEntity.ok().build();

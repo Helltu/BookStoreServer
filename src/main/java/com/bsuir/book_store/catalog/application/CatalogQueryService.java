@@ -1,10 +1,15 @@
 package com.bsuir.book_store.catalog.application;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
+import com.bsuir.book_store.catalog.api.dto.LanguageOption;
 import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
+import com.bsuir.book_store.catalog.api.dto.YearRangeResponse;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,6 +17,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregation;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
@@ -19,6 +26,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,16 +53,15 @@ public class CatalogQueryService {
         if (pageable.getSort() != null && pageable.getSort().isSorted()) {
             for (Sort.Order order : pageable.getSort()) {
                 String prop = order.getProperty();
-                if ("price".equals(prop) || "stockQuantity".equals(prop)) {
+                if ("price".equals(prop) || "stockQuantity".equals(prop) || "averageRating".equals(prop) || "createdAt".equals(prop)) {
                     validOrders.add(order);
                 } else if ("title".equals(prop) || "publisher".equals(prop) || "authors".equals(prop)) {
                     validOrders.add(order.withProperty(prop + ".keyword"));
                 }
-                // Любой другой мусор от клиента (включая "[]") будет проигнорирован
             }
         }
-        Pageable safePageable = validOrders.isEmpty() 
-                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()) 
+        Pageable safePageable = validOrders.isEmpty()
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize())
                 : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(validOrders));
 
         // 2. Проверка наличия фильтров
@@ -65,10 +72,18 @@ public class CatalogQueryService {
         boolean hasAuthors = criteria.getAuthors() != null && !criteria.getAuthors().isEmpty();
         boolean hasPublisher = criteria.getPublisher() != null && !criteria.getPublisher().isBlank();
         boolean hasInStock = Boolean.TRUE.equals(criteria.getInStock());
+        boolean hasLanguage = criteria.getLanguage() != null && !criteria.getLanguage().isBlank();
+        boolean hasFormat = criteria.getFormat() != null;
+        boolean hasAgeRating = criteria.getAgeRating() != null;
+        boolean hasMinYear = criteria.getMinYear() != null;
+        boolean hasMaxYear = criteria.getMaxYear() != null;
+        boolean hasMinRating = criteria.getMinRating() != null;
 
         Query query;
-        if (!hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors && !hasPublisher && !hasInStock) {
-            // Если фильтров нет, возвращаем все документы (match_all)
+        boolean noFilters = !hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors
+                && !hasPublisher && !hasInStock && !hasLanguage && !hasFormat && !hasAgeRating
+                && !hasMinYear && !hasMaxYear && !hasMinRating;
+        if (noFilters) {
             query = Query.of(q -> q.matchAll(m -> m));
         } else {
             query = Query.of(q -> q.bool(b -> {
@@ -115,6 +130,30 @@ public class CatalogQueryService {
                     b.filter(f -> f.range(r -> r.number(n -> n.field("stockQuantity").gte(1.0))));
                 }
 
+                if (hasLanguage) {
+                    b.filter(f -> f.term(t -> t.field("language").value(criteria.getLanguage())));
+                }
+
+                if (hasFormat) {
+                    b.filter(f -> f.term(t -> t.field("format").value(criteria.getFormat().name())));
+                }
+
+                if (hasAgeRating) {
+                    b.filter(f -> f.term(t -> t.field("ageRating").value(criteria.getAgeRating().name())));
+                }
+
+                if (hasMinYear) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("publicationYear").gte(criteria.getMinYear().doubleValue()))));
+                }
+
+                if (hasMaxYear) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("publicationYear").lte(criteria.getMaxYear().doubleValue()))));
+                }
+
+                if (hasMinRating) {
+                    b.filter(f -> f.range(r -> r.number(n -> n.field("averageRating").gte(criteria.getMinRating()))));
+                }
+
                 return b;
             }));
         }
@@ -131,6 +170,82 @@ public class CatalogQueryService {
                 .toList();
 
         return new PageImpl<>(content, safePageable, searchHits.getTotalHits());
+    }
+
+    public List<String> getAvailableLanguages() {
+        return getDistinctKeywordValues("language", 50);
+    }
+
+    public List<LanguageOption> getSupportedLanguages() {
+        return List.of(
+            new LanguageOption("ru", "Русский"),
+            new LanguageOption("be", "Белорусский"),
+            new LanguageOption("en", "Английский")
+        );
+    }
+
+    public List<BookFormat> getAvailableFormats() {
+        return Arrays.asList(BookFormat.values());
+    }
+
+    public List<AgeRating> getAvailableAgeRatings() {
+        return Arrays.asList(AgeRating.values());
+    }
+
+    public YearRangeResponse getYearRange() {
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(Query.of(q -> q.matchAll(m -> m)))
+                .withAggregation("min_year", co.elastic.clients.elasticsearch._types.aggregations.Aggregation.of(
+                        a -> a.min(m -> m.field("publicationYear"))))
+                .withAggregation("max_year", co.elastic.clients.elasticsearch._types.aggregations.Aggregation.of(
+                        a -> a.max(m -> m.field("publicationYear"))))
+                .withMaxResults(0)
+                .build();
+
+        SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
+
+        Integer minYear = null;
+        Integer maxYear = null;
+
+        if (hits.getAggregations() != null) {
+            ElasticsearchAggregations aggs = (ElasticsearchAggregations) hits.getAggregations();
+            ElasticsearchAggregation minAgg = aggs.aggregationsAsMap().get("min_year");
+            ElasticsearchAggregation maxAgg = aggs.aggregationsAsMap().get("max_year");
+            if (minAgg != null && minAgg.aggregation().getAggregate().isMin()) {
+                double v = minAgg.aggregation().getAggregate().min().value();
+                if (!Double.isInfinite(v)) minYear = (int) v;
+            }
+            if (maxAgg != null && maxAgg.aggregation().getAggregate().isMax()) {
+                double v = maxAgg.aggregation().getAggregate().max().value();
+                if (!Double.isInfinite(v)) maxYear = (int) v;
+            }
+        }
+
+        return new YearRangeResponse(minYear, maxYear);
+    }
+
+    private List<String> getDistinctKeywordValues(String field, int size) {
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(Query.of(q -> q.matchAll(m -> m)))
+                .withAggregation(field, co.elastic.clients.elasticsearch._types.aggregations.Aggregation.of(
+                        a -> a.terms(t -> t.field(field).size(size))))
+                .withMaxResults(0)
+                .build();
+
+        SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
+
+        if (hits.getAggregations() == null) return List.of();
+
+        ElasticsearchAggregations aggs = (ElasticsearchAggregations) hits.getAggregations();
+        ElasticsearchAggregation agg = aggs.aggregationsAsMap().get(field);
+        if (agg == null || !agg.aggregation().getAggregate().isSterms()) return List.of();
+
+        return agg.aggregation().getAggregate().sterms().buckets().array()
+                .stream()
+                .map(StringTermsBucket::key)
+                .filter(k -> k != null && !k.stringValue().isBlank())
+                .map(k -> k.stringValue())
+                .toList();
     }
 
     private boolean isValidUUID(String str) {

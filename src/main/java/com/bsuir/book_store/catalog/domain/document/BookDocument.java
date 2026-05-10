@@ -1,5 +1,6 @@
 package com.bsuir.book_store.catalog.domain.document;
 
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
 import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import org.springframework.data.elasticsearch.annotations.MultiField;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -81,10 +83,10 @@ public class BookDocument {
     @Field(type = FieldType.Keyword, index = false)
     private String dimensions;
 
-    @Field(type = FieldType.Keyword, index = false)
-    private String ageRating;
+    @Field(type = FieldType.Keyword)
+    private AgeRating ageRating;
 
-    @Field(type = FieldType.Integer, index = false)
+    @Field(type = FieldType.Integer)
     private Integer publicationYear;
 
     @Field(type = FieldType.Keyword)
@@ -92,6 +94,9 @@ public class BookDocument {
 
     @Field(type = FieldType.Keyword, index = false)
     private String originalLanguage;
+
+    @Field(type = FieldType.Date)
+    private Instant createdAt;
 
     @Field(type = FieldType.Keyword, index = false)
     private String coverUrl;

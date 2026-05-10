@@ -43,6 +43,7 @@ public class SearchSyncService {
                 .publicationYear(book.getPublicationYear())
                 .language(book.getLanguage())
                 .originalLanguage(book.getOriginalLanguage())
+                .createdAt(book.getCreatedAt() != null ? book.getCreatedAt().toInstant() : null)
                 .coverUrl(book.getCoverImage() != null ? book.getCoverImage().getUrl() : null)
                 .previewUrls(book.getPreviewImages() != null ? book.getPreviewImages().stream().map(com.bsuir.book_store.catalog.domain.model.Image::getUrl).toList() : java.util.List.of())
                 .descriptionEmbedding(embedding)
