@@ -14,6 +14,7 @@ import com.bsuir.book_store.catalog.infrastructure.AuthorRepository;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import com.bsuir.book_store.catalog.infrastructure.GenreRepository;
 import com.bsuir.book_store.catalog.infrastructure.PublisherRepository;
+import com.bsuir.book_store.orders.infrastructure.OrderRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.shared.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class CatalogCommandService {
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
     private final PublisherRepository publisherRepository;
+    private final OrderRepository orderRepository;
     private final SearchSyncService searchSyncService;
     private final BookTaggingService bookTaggingService;
     private final StorageService storageService;
@@ -47,12 +49,14 @@ public class CatalogCommandService {
         List<UUID> reqAuthorIds = request.getAuthorIds() != null ? request.getAuthorIds() : List.of();
         List<UUID> reqGenreIds = request.getGenreIds() != null ? request.getGenreIds() : List.of();
 
-        Set<Author> authors = new HashSet<>(authorRepository.findAllById(reqAuthorIds));
-        Set<Genre> genres = new HashSet<>(genreRepository.findAllById(reqGenreIds));
+        Set<Author> authors = authorRepository.findAllById(reqAuthorIds).stream()
+                .filter(a -> !a.isDeleted()).collect(java.util.stream.Collectors.toSet());
+        Set<Genre> genres = genreRepository.findAllById(reqGenreIds).stream()
+                .filter(g -> !g.isDeleted()).collect(java.util.stream.Collectors.toSet());
 
         Publisher publisher = null;
         if (request.getPublisherId() != null) {
-            publisher = publisherRepository.findById(request.getPublisherId())
+            publisher = publisherRepository.findByIdAndDeletedAtIsNull(request.getPublisherId())
                     .orElseThrow(() -> new DomainException("Издательство не найдено"));
         }
 
@@ -106,20 +110,22 @@ public class CatalogCommandService {
 
     @Transactional
     public void updateBook(UUID id, UpdateBookRequest request, MultipartFile coverFile, List<MultipartFile> previewFiles) {
-        Book book = bookRepository.findById(id)
+        Book book = bookRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
         Set<Author> authors = request.getAuthorIds() != null
-                ? new HashSet<>(authorRepository.findAllById(request.getAuthorIds()))
+                ? authorRepository.findAllById(request.getAuthorIds()).stream()
+                        .filter(a -> !a.isDeleted()).collect(java.util.stream.Collectors.toSet())
                 : book.getAuthors();
 
         Set<Genre> genres = request.getGenreIds() != null
-                ? new HashSet<>(genreRepository.findAllById(request.getGenreIds()))
+                ? genreRepository.findAllById(request.getGenreIds()).stream()
+                        .filter(g -> !g.isDeleted()).collect(java.util.stream.Collectors.toSet())
                 : book.getGenres();
 
         Publisher publisher = book.getPublisher();
         if (request.getPublisherId() != null) {
-            publisher = publisherRepository.findById(request.getPublisherId())
+            publisher = publisherRepository.findByIdAndDeletedAtIsNull(request.getPublisherId())
                     .orElseThrow(() -> new DomainException("Издательство не найдено"));
         }
 
@@ -227,7 +233,40 @@ public class CatalogCommandService {
 
     @Transactional
     public void deleteBook(UUID id) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+
+        if (orderRepository.existsAnyOrderForBook(id)) {
+            book.softDelete();
+            book = bookRepository.save(book);
+            searchSyncService.syncBook(book);
+        } else {
+            bookRepository.deleteById(id);
+            elasticsearchOperations.delete(id.toString(), BookDocument.class);
+        }
+    }
+
+    @Transactional
+    public void forceDeleteBook(UUID id) {
+        if (!bookRepository.existsById(id)) {
+            throw new DomainException("Книга не найдена");
+        }
+        if (orderRepository.existsAnyOrderForBook(id)) {
+            throw new DomainException("Нельзя полностью удалить книгу: существуют связанные заказы");
+        }
         bookRepository.deleteById(id);
         elasticsearchOperations.delete(id.toString(), BookDocument.class);
+    }
+
+    @Transactional
+    public void restoreBook(UUID id) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
+        if (!book.isDeleted()) {
+            throw new DomainException("Книга не удалена");
+        }
+        book.restore();
+        book = bookRepository.save(book);
+        searchSyncService.syncBook(book);
     }
 }

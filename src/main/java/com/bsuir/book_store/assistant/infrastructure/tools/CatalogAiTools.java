@@ -74,7 +74,7 @@ public class CatalogAiTools {
         Set<UUID> excluded = getExcludedBookIds();
         String langFilter = normalizeLanguage(language);
 
-        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 30)).getContent()
+        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 30), false).getContent()
                 .stream()
                 .filter(b -> !excluded.contains(toUuid(b.getId())))
                 .filter(b -> langFilter == null || detectRealLanguage(b).startsWith(langFilter))
@@ -159,7 +159,7 @@ public class CatalogAiTools {
         BookSearchCriteria criteria = new BookSearchCriteria();
         criteria.setQuery(idOrTitle);
 
-        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 1)).getContent();
+        List<BookDocument> results = catalogQueryService.search(criteria, PageRequest.of(0, 1), false).getContent();
 
         if (results.isEmpty()) {
             return "Книга не найдена. Проверь ID.";

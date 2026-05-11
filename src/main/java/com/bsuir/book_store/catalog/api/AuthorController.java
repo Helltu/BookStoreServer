@@ -24,8 +24,10 @@ public class AuthorController {
 
     @Operation(summary = "Получить всех авторов")
     @GetMapping
-    public ResponseEntity<List<Author>> getAll() {
-        return ResponseEntity.ok(authorService.getAll());
+    public ResponseEntity<List<Author>> getAll(org.springframework.security.core.Authentication authentication) {
+        boolean manager = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+        return ResponseEntity.ok(manager ? authorService.getAll() : authorService.getAllActive());
     }
 
     @Operation(summary = "Получить автора по ID")
@@ -54,5 +56,20 @@ public class AuthorController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         authorService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Полностью удалить автора")
+    @DeleteMapping("/{id}/force")
+    @IsManager
+    public ResponseEntity<Void> forceDelete(@PathVariable UUID id) {
+        authorService.forceDelete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Восстановить автора")
+    @PostMapping("/{id}/restore")
+    @IsManager
+    public ResponseEntity<Author> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(authorService.restore(id));
     }
 }

@@ -173,7 +173,7 @@ public class AnalyticsService {
         // --- Stock metrics ---
         long outOfStockCount = bookRepository.countOutOfStock();
         List<LowStockBook> lowStockBooks = bookRepository
-                .findByStockQuantityLessThanEqualOrderByStockQuantityAsc(lowStockThreshold)
+                .findByStockQuantityLessThanEqualAndDeletedAtIsNullOrderByStockQuantityAsc(lowStockThreshold)
                 .stream()
                 .map(b -> LowStockBook.builder().title(b.getTitle()).stockQuantity(b.getStockQuantity()).build())
                 .toList();

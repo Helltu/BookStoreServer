@@ -95,14 +95,23 @@ public class CatalogController {
     @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params)")
     @GetMapping("/search")
     public ResponseEntity<Page<BookDocument>> search(@Valid @ModelAttribute BookSearchCriteria criteria,
-                                                     Pageable pageable) {
-        return ResponseEntity.ok(queryService.search(criteria, pageable));
+                                                     Pageable pageable,
+                                                     org.springframework.security.core.Authentication authentication) {
+        boolean manager = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+        if (Boolean.TRUE.equals(criteria.getDeleted()) && !manager) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(queryService.search(criteria, pageable, manager));
     }
 
     @Operation(summary = "Получить книгу по ID", description = "Возвращает карточку конкретной книги")
     @GetMapping("/books/{id}")
-    public ResponseEntity<BookDocument> getBookById(@PathVariable UUID id) {
-        return ResponseEntity.ok(queryService.getBookById(id.toString()));
+    public ResponseEntity<BookDocument> getBookById(@PathVariable UUID id,
+            org.springframework.security.core.Authentication authentication) {
+        boolean manager = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+        return ResponseEntity.ok(queryService.getBookById(id.toString(), manager));
     }
 
     @Operation(summary = "Создание книги", description = "Создает новую книгу по введенным данным")
@@ -133,11 +142,27 @@ public class CatalogController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Удаление книги", description = "Удаляет книгу из каталога и Elasticsearch")
+    @Operation(summary = "Удаление книги", description = "Soft delete если есть заказы, иначе физическое удаление")
     @DeleteMapping("/books/{id}")
     @IsManager
     public ResponseEntity<Void> deleteBook(@PathVariable UUID id) {
         commandService.deleteBook(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Полностью удалить книгу", description = "Физическое удаление — только если нет связанных заказов")
+    @DeleteMapping("/books/{id}/force")
+    @IsManager
+    public ResponseEntity<Void> forceDeleteBook(@PathVariable UUID id) {
+        commandService.forceDeleteBook(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Восстановить книгу", description = "Снимает пометку об удалении и восстанавливает в Elasticsearch")
+    @PostMapping("/books/{id}/restore")
+    @IsManager
+    public ResponseEntity<Void> restoreBook(@PathVariable UUID id) {
+        commandService.restoreBook(id);
         return ResponseEntity.noContent().build();
     }
 

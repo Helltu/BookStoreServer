@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -112,11 +113,38 @@ public class Book {
     )
     private List<Image> previewImages = new ArrayList<>();
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @CreationTimestamp
     private Timestamp createdAt;
 
     @UpdateTimestamp
     private Timestamp updatedAt;
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void softDelete() {
+        this.deletedAt = Instant.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public void removeAuthor(Author author) {
+        this.authors.remove(author);
+    }
+
+    public void removeGenre(Genre genre) {
+        this.genres.remove(genre);
+    }
+
+    public void detachPublisher() {
+        this.publisher = null;
+    }
 
     public void reserveStock(int quantity) {
         if (quantity <= 0) throw new DomainException("Количество должно быть положительным");

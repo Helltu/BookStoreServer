@@ -24,8 +24,10 @@ public class PublisherController {
 
     @Operation(summary = "Получить все издательства")
     @GetMapping
-    public ResponseEntity<List<Publisher>> getAll() {
-        return ResponseEntity.ok(publisherService.getAll());
+    public ResponseEntity<List<Publisher>> getAll(org.springframework.security.core.Authentication authentication) {
+        boolean manager = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+        return ResponseEntity.ok(manager ? publisherService.getAll() : publisherService.getAllActive());
     }
 
     @Operation(summary = "Получить издательство по ID")
@@ -54,5 +56,20 @@ public class PublisherController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         publisherService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Полностью удалить издательство")
+    @DeleteMapping("/{id}/force")
+    @IsManager
+    public ResponseEntity<Void> forceDelete(@PathVariable UUID id) {
+        publisherService.forceDelete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Восстановить издательство")
+    @PostMapping("/{id}/restore")
+    @IsManager
+    public ResponseEntity<Publisher> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(publisherService.restore(id));
     }
 }

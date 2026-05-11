@@ -29,6 +29,11 @@ public class AuthorService {
     }
 
     @Transactional(readOnly = true)
+    public List<Author> getAllActive() {
+        return authorRepository.findAllByDeletedAtIsNull();
+    }
+
+    @Transactional(readOnly = true)
     public Author getById(UUID id) {
         return authorRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Автор не найден"));
@@ -70,9 +75,37 @@ public class AuthorService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!authorRepository.existsById(id)) {
-            throw new DomainException("Автор не найден");
+        Author author = authorRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Автор не найден"));
+        if (bookRepository.findByAuthors_Id(id).isEmpty()) {
+            authorRepository.delete(author);
+        } else {
+            author.softDelete();
+            authorRepository.save(author);
         }
-        authorRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void forceDelete(UUID id) {
+        Author author = authorRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Автор не найден"));
+        List<Book> books = bookRepository.findByAuthors_Id(id);
+        books.forEach(b -> {
+            b.removeAuthor(author);
+            bookRepository.save(b);
+            searchSyncService.syncBook(b);
+        });
+        authorRepository.delete(author);
+    }
+
+    @Transactional
+    public Author restore(UUID id) {
+        Author author = authorRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Автор не найден"));
+        if (!author.isDeleted()) {
+            throw new DomainException("Автор не удалён");
+        }
+        author.setDeletedAt(null);
+        return authorRepository.save(author);
     }
 }

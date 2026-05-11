@@ -23,8 +23,16 @@ public class GenreController {
 
     @Operation(summary = "Получить все жанры")
     @GetMapping
-    public ResponseEntity<List<Genre>> getAll() {
-        return ResponseEntity.ok(genreService.getAll());
+    public ResponseEntity<List<Genre>> getAll(org.springframework.security.core.Authentication authentication) {
+        boolean manager = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("MANAGER"));
+        return ResponseEntity.ok(manager ? genreService.getAll() : genreService.getAllActive());
+    }
+
+    @Operation(summary = "Получить жанр по ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<Genre> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(genreService.getById(id));
     }
 
     @Operation(summary = "Создать жанр")
@@ -47,5 +55,20 @@ public class GenreController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         genreService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Полностью удалить жанр")
+    @DeleteMapping("/{id}/force")
+    @IsManager
+    public ResponseEntity<Void> forceDelete(@PathVariable UUID id) {
+        genreService.forceDelete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Восстановить жанр")
+    @PostMapping("/{id}/restore")
+    @IsManager
+    public ResponseEntity<Genre> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(genreService.restore(id));
     }
 }

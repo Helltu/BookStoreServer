@@ -29,6 +29,11 @@ public class PublisherService {
     }
 
     @Transactional(readOnly = true)
+    public List<Publisher> getAllActive() {
+        return publisherRepository.findAllByDeletedAtIsNull();
+    }
+
+    @Transactional(readOnly = true)
     public Publisher getById(UUID id) {
         return publisherRepository.findById(id)
                 .orElseThrow(() -> new DomainException("Издательство не найдено"));
@@ -76,9 +81,37 @@ public class PublisherService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!publisherRepository.existsById(id)) {
-            throw new DomainException("Издательство не найдено");
+        Publisher publisher = publisherRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Издательство не найдено"));
+        if (bookRepository.findByPublisher_Id(id).isEmpty()) {
+            publisherRepository.delete(publisher);
+        } else {
+            publisher.softDelete();
+            publisherRepository.save(publisher);
         }
-        publisherRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void forceDelete(UUID id) {
+        Publisher publisher = publisherRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Издательство не найдено"));
+        List<Book> books = bookRepository.findByPublisher_Id(id);
+        books.forEach(b -> {
+            b.detachPublisher();
+            bookRepository.save(b);
+            searchSyncService.syncBook(b);
+        });
+        publisherRepository.delete(publisher);
+    }
+
+    @Transactional
+    public Publisher restore(UUID id) {
+        Publisher publisher = publisherRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Издательство не найдено"));
+        if (!publisher.isDeleted()) {
+            throw new DomainException("Издательство не удалено");
+        }
+        publisher.setDeletedAt(null);
+        return publisherRepository.save(publisher);
     }
 }

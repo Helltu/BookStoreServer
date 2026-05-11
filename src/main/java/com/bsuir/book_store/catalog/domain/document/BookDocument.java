@@ -98,6 +98,9 @@ public class BookDocument {
     @Field(type = FieldType.Date)
     private Instant createdAt;
 
+    @Field(type = FieldType.Date)
+    private Instant deletedAt;
+
     @Field(type = FieldType.Keyword, index = false)
     private String coverUrl;
 

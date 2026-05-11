@@ -50,4 +50,7 @@ public class BookSearchCriteria {
 
     @Schema(description = "Минимальный средний рейтинг (0.0 - 5.0)", example = "")
     private Double minRating;
+
+    @Schema(description = "Фильтр по удалённым книгам (только для менеджера). true — только удалённые, false/null — только активные", example = "")
+    private Boolean deleted;
 }

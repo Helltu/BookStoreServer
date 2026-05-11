@@ -62,4 +62,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi WHERE o.user.username = :username AND oi.bookId = :bookId AND o.status IN (com.bsuir.book_store.orders.domain.OrderStatus.DELIVERED, com.bsuir.book_store.orders.domain.OrderStatus.RETURNED)")
     boolean existsDeliveredOrderForUserAndBook(@Param("username") String username, @Param("bookId") UUID bookId);
+
+    @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi WHERE oi.bookId = :bookId")
+    boolean existsAnyOrderForBook(@Param("bookId") UUID bookId);
 }

@@ -92,7 +92,7 @@ public class UserService {
     public void addBookToWishlist(String username, UUID bookId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new DomainException("Пользователь не найден"));
-        Book book = bookRepository.findById(bookId)
+        Book book = bookRepository.findByIdAndDeletedAtIsNull(bookId)
                 .orElseThrow(() -> new DomainException("Книга не найдена"));
 
         user.addToWishlist(book);

@@ -9,6 +9,7 @@ import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
 import com.bsuir.book_store.catalog.api.dto.YearRangeResponse;
 import com.bsuir.book_store.catalog.domain.document.BookDocument;
 import com.bsuir.book_store.catalog.domain.model.AgeRating;
+import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.domain.model.BookFormat;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,17 +38,53 @@ public class CatalogQueryService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final BookRepository bookRepository;
 
+    private BookDocument toDocument(Book book) {
+        return BookDocument.builder()
+                .id(book.getId().toString())
+                .title(book.getTitle())
+                .description(book.getDescription())
+                .isbn(book.getIsbn())
+                .stockQuantity(book.getStockQuantity())
+                .price(book.getCost())
+                .averageRating(book.getAverageRating())
+                .totalReviews(book.getTotalReviews())
+                .authors(book.getAuthors().stream().map(a -> a.getName()).toList())
+                .genres(book.getGenres().stream().map(g -> g.getName()).toList())
+                .publisher(book.getPublisher() != null ? book.getPublisher().getName() : null)
+                .keywords(book.getKeywords() != null ? book.getKeywords().stream().toList() : java.util.List.of())
+                .pagesCount(book.getPagesCount())
+                .format(book.getFormat())
+                .weight(book.getWeight())
+                .dimensions(book.getDimensions())
+                .ageRating(book.getAgeRating())
+                .publicationYear(book.getPublicationYear())
+                .language(book.getLanguage())
+                .originalLanguage(book.getOriginalLanguage())
+                .createdAt(book.getCreatedAt() != null ? book.getCreatedAt().toInstant() : null)
+                .deletedAt(book.getDeletedAt())
+                .coverUrl(book.getCoverImage() != null ? book.getCoverImage().getUrl() : null)
+                .previewUrls(book.getPreviewImages() != null
+                        ? book.getPreviewImages().stream().map(img -> img.getUrl()).toList()
+                        : java.util.List.of())
+                .build();
+    }
+
     public PriceRangeResponse getPriceRange() {
         return new PriceRangeResponse(bookRepository.findMinPrice(), bookRepository.findMaxPrice());
     }
 
-    public BookDocument getBookById(String id) {
+    public BookDocument getBookById(String id, boolean includeDeleted) {
         BookDocument doc = elasticsearchOperations.get(id, BookDocument.class);
-        if (doc == null) throw new com.bsuir.book_store.shared.exception.DomainException("Книга не найдена");
-        return doc;
+        if (doc != null) return doc;
+        if (includeDeleted) {
+            return bookRepository.findById(UUID.fromString(id))
+                    .map(this::toDocument)
+                    .orElseThrow(() -> new com.bsuir.book_store.shared.exception.DomainException("Книга не найдена"));
+        }
+        throw new com.bsuir.book_store.shared.exception.DomainException("Книга не найдена");
     }
 
-    public Page<BookDocument> search(BookSearchCriteria criteria, Pageable pageable) {
+    public Page<BookDocument> search(BookSearchCriteria criteria, Pageable pageable, boolean isManager) {
         // 1. Очистка сортировки: строгий БЕЛЫЙ СПИСОК (Whitelist) разрешенных полей
         List<Sort.Order> validOrders = new ArrayList<>();
         if (pageable.getSort() != null && pageable.getSort().isSorted()) {
@@ -78,13 +115,18 @@ public class CatalogQueryService {
         boolean hasMinYear = criteria.getMinYear() != null;
         boolean hasMaxYear = criteria.getMaxYear() != null;
         boolean hasMinRating = criteria.getMinRating() != null;
+        boolean filterDeleted = isManager && Boolean.TRUE.equals(criteria.getDeleted());
 
         Query query;
         boolean noFilters = !hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors
                 && !hasPublisher && !hasInStock && !hasLanguage && !hasFormat && !hasAgeRating
-                && !hasMinYear && !hasMaxYear && !hasMinRating;
+                && !hasMinYear && !hasMaxYear && !hasMinRating && !filterDeleted && isManager;
         if (noFilters) {
-            query = Query.of(q -> q.matchAll(m -> m));
+            if (!isManager) {
+                query = Query.of(q -> q.bool(b -> b.filter(f -> f.bool(fb -> fb.mustNot(mn -> mn.exists(e -> e.field("deletedAt")))))));
+            } else {
+                query = Query.of(q -> q.matchAll(m -> m));
+            }
         } else {
             query = Query.of(q -> q.bool(b -> {
                 if (hasQuery) {
@@ -152,6 +194,12 @@ public class CatalogQueryService {
 
                 if (hasMinRating) {
                     b.filter(f -> f.range(r -> r.number(n -> n.field("averageRating").gte(criteria.getMinRating()))));
+                }
+
+                if (filterDeleted) {
+                    b.filter(f -> f.exists(e -> e.field("deletedAt")));
+                } else if (!isManager) {
+                    b.filter(f -> f.bool(fb -> fb.mustNot(mn -> mn.exists(e -> e.field("deletedAt")))));
                 }
 
                 return b;

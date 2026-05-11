@@ -26,6 +26,17 @@ public class GenreService {
         return genreRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
+    public List<Genre> getAllActive() {
+        return genreRepository.findAllByDeletedAtIsNull();
+    }
+
+    @Transactional(readOnly = true)
+    public Genre getById(UUID id) {
+        return genreRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Жанр не найден"));
+    }
+
     @Transactional
     public Genre create(GenreDto dto) {
         if (genreRepository.findByName(dto.getName()).isPresent()) {
@@ -55,9 +66,37 @@ public class GenreService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!genreRepository.existsById(id)) {
-            throw new DomainException("Жанр не найден");
+        Genre genre = genreRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Жанр не найден"));
+        if (bookRepository.findByGenres_Id(id).isEmpty()) {
+            genreRepository.delete(genre);
+        } else {
+            genre.softDelete();
+            genreRepository.save(genre);
         }
-        genreRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void forceDelete(UUID id) {
+        Genre genre = genreRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Жанр не найден"));
+        List<Book> books = bookRepository.findByGenres_Id(id);
+        books.forEach(b -> {
+            b.removeGenre(genre);
+            bookRepository.save(b);
+            searchSyncService.syncBook(b);
+        });
+        genreRepository.delete(genre);
+    }
+
+    @Transactional
+    public Genre restore(UUID id) {
+        Genre genre = genreRepository.findById(id)
+                .orElseThrow(() -> new DomainException("Жанр не найден"));
+        if (!genre.isDeleted()) {
+            throw new DomainException("Жанр не удалён");
+        }
+        genre.setDeletedAt(null);
+        return genreRepository.save(genre);
     }
 }
