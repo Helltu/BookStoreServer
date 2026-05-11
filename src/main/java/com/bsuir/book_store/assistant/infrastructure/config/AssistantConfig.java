@@ -3,6 +3,7 @@ package com.bsuir.book_store.assistant.infrastructure.config;
 import com.bsuir.book_store.assistant.application.BookStoreAssistant;
 import com.bsuir.book_store.assistant.infrastructure.tools.CatalogAiTools;
 import com.bsuir.book_store.assistant.infrastructure.tools.OrderAiTools;
+import com.bsuir.book_store.assistant.infrastructure.tools.RecommendationAiTools;
 import com.bsuir.book_store.assistant.infrastructure.tools.WishlistAiTools;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -44,6 +45,7 @@ public class AssistantConfig {
             CatalogAiTools catalogAiTools,
             OrderAiTools orderAiTools,
             WishlistAiTools wishlistAiTools,
+            RecommendationAiTools recommendationAiTools,
             ChatMemoryProvider chatMemoryProvider
     ) {
         String systemPrompt = buildSystemPrompt();
@@ -51,7 +53,7 @@ public class AssistantConfig {
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemoryProvider(chatMemoryProvider)
                 .systemMessageProvider(chatId -> systemPrompt)
-                .tools(catalogAiTools, orderAiTools, wishlistAiTools)
+                .tools(catalogAiTools, orderAiTools, wishlistAiTools, recommendationAiTools)
                 .build();
     }
 

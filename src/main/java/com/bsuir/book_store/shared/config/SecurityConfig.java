@@ -32,7 +32,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/catalog/publishers").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/genres").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/catalog/authors").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/year-range").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/formats").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/age-ratings").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/languages/supported").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/book/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/recommendations/similar/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/recommendations/frequently-bought-with/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
