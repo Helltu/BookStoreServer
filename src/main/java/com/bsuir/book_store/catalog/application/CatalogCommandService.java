@@ -17,6 +17,7 @@ import com.bsuir.book_store.catalog.infrastructure.PublisherRepository;
 import com.bsuir.book_store.orders.infrastructure.OrderRepository;
 import com.bsuir.book_store.shared.exception.DomainException;
 import com.bsuir.book_store.shared.storage.StorageService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ public class CatalogCommandService {
     private final BookTaggingService bookTaggingService;
     private final StorageService storageService;
     private final ElasticsearchOperations elasticsearchOperations;
+    private final EntityManager entityManager;
 
     @Transactional
     public UUID createBook(CreateBookRequest request, MultipartFile coverFile, List<MultipartFile> previewFiles) {
@@ -82,7 +84,7 @@ public class CatalogCommandService {
         Book book = Book.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .isbn(request.getIsbn())
+                .isbn(request.getIsbn() != null && !request.getIsbn().isBlank() ? request.getIsbn() : null)
                 .cost(request.getPrice())
                 .stockQuantity(request.getStock())
                 .authors(authors)
@@ -102,6 +104,8 @@ public class CatalogCommandService {
                 .build();
 
         book = bookRepository.save(book);
+        entityManager.flush();
+        entityManager.refresh(book);
 
         searchSyncService.syncBook(book);
 

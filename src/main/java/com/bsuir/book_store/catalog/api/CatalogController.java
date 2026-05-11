@@ -92,7 +92,7 @@ public class CatalogController {
         return ResponseEntity.ok(queryService.getAvailableAgeRatings());
     }
 
-    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params)")
+    @Operation(summary = "Поиск книг", description = "Полнотекстовый поиск c фильтрами и пагинацией (Query Params). Сортировка: price, averageRating, stockQuantity, createdAt, title, publisher, authors — или relevance (по релевантности Elasticsearch _score)")
     @GetMapping("/search")
     public ResponseEntity<Page<BookDocument>> search(@Valid @ModelAttribute BookSearchCriteria criteria,
                                                      Pageable pageable,

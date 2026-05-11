@@ -65,4 +65,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi WHERE oi.bookId = :bookId")
     boolean existsAnyOrderForBook(@Param("bookId") UUID bookId);
+
+    @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM Order o JOIN o.orderItems oi WHERE oi.bookId = :bookId AND o.status NOT IN (com.bsuir.book_store.orders.domain.OrderStatus.CANCELLED)")
+    int countTotalOrderedByBookId(@Param("bookId") UUID bookId);
 }

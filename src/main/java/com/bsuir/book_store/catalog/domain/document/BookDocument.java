@@ -47,6 +47,9 @@ public class BookDocument {
     @Field(type = FieldType.Integer)
     private Integer totalReviews;
 
+    @Field(type = FieldType.Integer)
+    private Integer totalOrders;
+
     @MultiField(
             mainField = @Field(type = FieldType.Text, analyzer = "standard"),
             otherFields = { @InnerField(suffix = "keyword", type = FieldType.Keyword) }

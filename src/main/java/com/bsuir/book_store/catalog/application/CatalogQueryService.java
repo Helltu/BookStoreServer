@@ -2,7 +2,12 @@ package com.bsuir.book_store.catalog.application;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import com.bsuir.book_store.catalog.api.dto.BookSearchCriteria;
 import com.bsuir.book_store.catalog.api.dto.LanguageOption;
 import com.bsuir.book_store.catalog.api.dto.PriceRangeResponse;
@@ -87,12 +92,15 @@ public class CatalogQueryService {
     public Page<BookDocument> search(BookSearchCriteria criteria, Pageable pageable, boolean isManager) {
         // 1. Очистка сортировки: строгий БЕЛЫЙ СПИСОК (Whitelist) разрешенных полей
         List<Sort.Order> validOrders = new ArrayList<>();
+        boolean sortByRelevance = false;
         if (pageable.getSort() != null && pageable.getSort().isSorted()) {
             for (Sort.Order order : pageable.getSort()) {
                 String prop = order.getProperty();
-                if ("price".equals(prop) || "stockQuantity".equals(prop) || "averageRating".equals(prop) || "createdAt".equals(prop)) {
+                if ("relevance".equals(prop)) {
+                    sortByRelevance = true;
+                } else if ("price".equals(prop) || "averageRating".equals(prop) || "createdAt".equals(prop) || "stockQuantity".equals(prop)) {
                     validOrders.add(order);
-                } else if ("title".equals(prop) || "publisher".equals(prop) || "authors".equals(prop)) {
+                } else if ("title".equals(prop)) {
                     validOrders.add(order.withProperty(prop + ".keyword"));
                 }
             }
@@ -115,18 +123,15 @@ public class CatalogQueryService {
         boolean hasMinYear = criteria.getMinYear() != null;
         boolean hasMaxYear = criteria.getMaxYear() != null;
         boolean hasMinRating = criteria.getMinRating() != null;
-        boolean filterDeleted = isManager && Boolean.TRUE.equals(criteria.getDeleted());
+        // null = все, true = только удалённые, false = только активные
+        Boolean deletedFilter = isManager ? criteria.getDeleted() : Boolean.FALSE;
 
         Query query;
         boolean noFilters = !hasQuery && !hasMinPrice && !hasMaxPrice && !hasGenres && !hasAuthors
                 && !hasPublisher && !hasInStock && !hasLanguage && !hasFormat && !hasAgeRating
-                && !hasMinYear && !hasMaxYear && !hasMinRating && !filterDeleted && isManager;
+                && !hasMinYear && !hasMaxYear && !hasMinRating && deletedFilter == null && isManager;
         if (noFilters) {
-            if (!isManager) {
-                query = Query.of(q -> q.bool(b -> b.filter(f -> f.bool(fb -> fb.mustNot(mn -> mn.exists(e -> e.field("deletedAt")))))));
-            } else {
-                query = Query.of(q -> q.matchAll(m -> m));
-            }
+            query = Query.of(q -> q.matchAll(m -> m));
         } else {
             query = Query.of(q -> q.bool(b -> {
                 if (hasQuery) {
@@ -134,8 +139,21 @@ public class CatalogQueryService {
                     b.must(m -> m.bool(inner -> {
                         inner.should(s -> s.multiMatch(mm -> mm
                                 .query(rawQuery)
-                                .fields("title^5", "authors^3", "keywords^2", "description^2", "genres^1", "publisher^1")
+                                .fields("title^15", "description^3")
+                                .type(TextQueryType.Phrase)
+                                .boost(2.0f)
+                        ));
+                        inner.should(s -> s.multiMatch(mm -> mm
+                                .query(rawQuery)
+                                .fields("title^10", "authors^5", "keywords^3", "description^2", "genres^1", "publisher^1")
+                                .type(TextQueryType.BestFields)
+                        ));
+                        inner.should(s -> s.multiMatch(mm -> mm
+                                .query(rawQuery)
+                                .fields("title^5", "authors^3", "keywords^2", "description^1")
+                                .type(TextQueryType.BestFields)
                                 .fuzziness("AUTO")
+                                .boost(0.4f)
                         ));
                         inner.should(s -> s.term(t -> t.field("isbn").value(rawQuery)));
                         if (isValidUUID(rawQuery)) {
@@ -196,18 +214,45 @@ public class CatalogQueryService {
                     b.filter(f -> f.range(r -> r.number(n -> n.field("averageRating").gte(criteria.getMinRating()))));
                 }
 
-                if (filterDeleted) {
+                if (Boolean.TRUE.equals(deletedFilter)) {
                     b.filter(f -> f.exists(e -> e.field("deletedAt")));
-                } else if (!isManager) {
+                } else if (Boolean.FALSE.equals(deletedFilter)) {
                     b.filter(f -> f.bool(fb -> fb.mustNot(mn -> mn.exists(e -> e.field("deletedAt")))));
                 }
+                // null — без фильтра, менеджер видит все
 
                 return b;
             }));
         }
 
+        Query finalQuery = Query.of(q -> q.functionScore(fs -> fs
+                .query(query)
+                .functions(
+                        FunctionScore.of(f -> f.fieldValueFactor(fv -> fv
+                                .field("averageRating")
+                                .factor(0.2)
+                                .modifier(FieldValueFactorModifier.Ln1p)
+                                .missing(1.0)
+                        )),
+                        FunctionScore.of(f -> f.fieldValueFactor(fv -> fv
+                                .field("totalReviews")
+                                .factor(0.1)
+                                .modifier(FieldValueFactorModifier.Log1p)
+                                .missing(0.0)
+                        )),
+                        FunctionScore.of(f -> f.fieldValueFactor(fv -> fv
+                                .field("totalOrders")
+                                .factor(0.15)
+                                .modifier(FieldValueFactorModifier.Log1p)
+                                .missing(0.0)
+                        ))
+                )
+                .scoreMode(FunctionScoreMode.Sum)
+                .boostMode(FunctionBoostMode.Multiply)
+        ));
+
         NativeQuery nativeQuery = NativeQuery.builder()
-                .withQuery(query)
+                .withQuery(finalQuery)
                 .withPageable(safePageable)
                 .build();
 
