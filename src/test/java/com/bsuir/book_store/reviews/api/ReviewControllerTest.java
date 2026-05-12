@@ -2,12 +2,17 @@ package com.bsuir.book_store.reviews.api;
 
 import com.bsuir.book_store.catalog.domain.model.Book;
 import com.bsuir.book_store.catalog.infrastructure.BookRepository;
+import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import com.bsuir.book_store.recommendations.infrastructure.BookCoOccurrenceRepository;
+import com.bsuir.book_store.orders.domain.Order;
+import com.bsuir.book_store.orders.infrastructure.OrderRepository;
 import com.bsuir.book_store.reviews.api.dto.CreateReviewRequest;
+import com.bsuir.book_store.reviews.domain.Review;
 import com.bsuir.book_store.reviews.infrastructure.ReviewRepository;
+import com.bsuir.book_store.shared.security.JwtService;
 import com.bsuir.book_store.users.domain.User;
 import com.bsuir.book_store.users.domain.enums.Role;
 import com.bsuir.book_store.users.infrastructure.UserRepository;
-import com.bsuir.book_store.shared.security.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,24 +40,33 @@ class ReviewControllerTest {
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private BookRepository bookRepository;
+    @Autowired private OrderRepository orderRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean
-    private com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository elasticRepository;
+    private BookElasticRepository elasticRepository;
+
+    @MockitoBean
+    private BookCoOccurrenceRepository bookCoOccurrenceRepository;
+
+    @MockitoBean
+    private org.springframework.mail.javamail.JavaMailSender javaMailSender;
 
     private String clientToken;
     private String managerToken;
     private UUID bookId;
+    private User client;
 
     @BeforeEach
     void setUp() {
         reviewRepository.deleteAll();
+        orderRepository.deleteAll();
         userRepository.deleteAll();
         bookRepository.deleteAll();
 
-        User client = User.register("client", "c@test.com", passwordEncoder.encode("123"), Role.CLIENT, null, null, null);
+        client = User.register("client", "c@test.com", passwordEncoder.encode("123"), Role.CLIENT, null, null, null);
         userRepository.save(client);
         clientToken = jwtService.generateToken(client);
 
@@ -65,11 +79,37 @@ class ReviewControllerTest {
     }
 
     @Test
-    void shouldAddReviewSuccessfully() throws Exception {
+    void shouldForbidReviewWithoutDeliveredOrder() throws Exception {
         CreateReviewRequest request = new CreateReviewRequest();
         request.setBookId(bookId);
         request.setRating(5);
-        request.setText("Excellent!");
+        request.setText("Great!");
+
+        mockMvc.perform(post("/api/reviews")
+                        .header("Authorization", "Bearer " + clientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldAddReviewAfterDeliveredOrder() throws Exception {
+        Book book = bookRepository.findById(bookId).get();
+        Order order = Order.create(client);
+        order.addItem(book, 1);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.PROCESSING);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.SHIPPED);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.DELIVERED);
+        orderRepository.save(order);
+
+        // refresh client from DB so lazy collections are loaded
+        client = userRepository.findByUsername("client").get();
+        clientToken = jwtService.generateToken(client);
+
+        CreateReviewRequest request = new CreateReviewRequest();
+        request.setBookId(bookId);
+        request.setRating(4);
+        request.setText("Good read!");
 
         mockMvc.perform(post("/api/reviews")
                         .header("Authorization", "Bearer " + clientToken)
@@ -80,6 +120,17 @@ class ReviewControllerTest {
 
     @Test
     void shouldForbidDuplicateReview() throws Exception {
+        Book book = bookRepository.findById(bookId).get();
+        Order order = Order.create(client);
+        order.addItem(book, 1);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.PROCESSING);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.SHIPPED);
+        order.updateStatus(com.bsuir.book_store.orders.domain.OrderStatus.DELIVERED);
+        orderRepository.save(order);
+
+        client = userRepository.findByUsername("client").get();
+        clientToken = jwtService.generateToken(client);
+
         CreateReviewRequest request = new CreateReviewRequest();
         request.setBookId(bookId);
         request.setRating(5);
@@ -100,9 +151,9 @@ class ReviewControllerTest {
 
     @Test
     void managerShouldDeleteReview() throws Exception {
-        User client = userRepository.findByUsername("client").get();
         Book book = bookRepository.findById(bookId).get();
-        var review = com.bsuir.book_store.reviews.domain.Review.leave(client, book, 5, "Text");
+        User freshClient = userRepository.findByUsername("client").get();
+        Review review = Review.leave(freshClient, book, 5, "Text");
         UUID reviewId = reviewRepository.save(review).getId();
 
         mockMvc.perform(delete("/api/reviews/" + reviewId)
@@ -112,9 +163,21 @@ class ReviewControllerTest {
 
     @Test
     void clientCannotDeleteReview() throws Exception {
-        UUID randomId = UUID.randomUUID();
-        mockMvc.perform(delete("/api/reviews/" + randomId)
+        mockMvc.perform(delete("/api/reviews/" + UUID.randomUUID())
                         .header("Authorization", "Bearer " + clientToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void unauthenticatedCannotPostReview() throws Exception {
+        CreateReviewRequest request = new CreateReviewRequest();
+        request.setBookId(bookId);
+        request.setRating(5);
+        request.setText("Anon");
+
+        mockMvc.perform(post("/api/reviews")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
 }

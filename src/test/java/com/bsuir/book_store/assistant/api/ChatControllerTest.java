@@ -42,6 +42,12 @@ class ChatControllerTest {
     @MockitoBean
     private com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository elasticRepository;
 
+    @MockitoBean
+    private com.bsuir.book_store.recommendations.infrastructure.BookCoOccurrenceRepository bookCoOccurrenceRepository;
+
+    @MockitoBean
+    private org.springframework.mail.javamail.JavaMailSender javaMailSender;
+
     private String token;
 
     @BeforeEach

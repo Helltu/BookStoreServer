@@ -11,28 +11,71 @@ class ReviewTest {
 
     @Test
     void shouldCreateValidReview() {
-        Review review = Review.leave(new User(), new Book(), 5, "Great book!");
+        Review review = Review.leave(new User(), new Book(), 4, "Good book!");
 
         assertNull(review.getId());
-        assertEquals(5, review.getRating());
-        assertEquals("Great book!", review.getText());
+        assertEquals(4, review.getRating());
+        assertEquals("Good book!", review.getText());
     }
 
     @Test
-    void shouldFailOnInvalidRating() {
-        assertThrows(DomainException.class, () ->
-                Review.leave(new User(), new Book(), 6, "Wow")
-        );
+    void shouldAcceptBoundaryRatings() {
+        assertDoesNotThrow(() -> Review.leave(new User(), new Book(), 1, "Worst"));
+        assertDoesNotThrow(() -> Review.leave(new User(), new Book(), 5, "Best"));
+    }
 
-        assertThrows(DomainException.class, () ->
-                Review.leave(new User(), new Book(), 0, "Bad")
-        );
+    @Test
+    void shouldFailOnRatingAboveFive() {
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), 6, "Wow"));
+    }
+
+    @Test
+    void shouldFailOnRatingBelowOne() {
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), 0, "Bad"));
+    }
+
+    @Test
+    void shouldFailOnNegativeRating() {
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), -1, "Negative"));
     }
 
     @Test
     void shouldFailOnEmptyText() {
-        assertThrows(DomainException.class, () ->
-                Review.leave(new User(), new Book(), 5, "")
-        );
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), 5, ""));
+    }
+
+    @Test
+    void shouldFailOnBlankText() {
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), 5, "   "));
+    }
+
+    @Test
+    void shouldFailOnNullText() {
+        assertThrows(DomainException.class, () -> Review.leave(new User(), new Book(), 5, null));
+    }
+
+    @Test
+    void shouldUpdateContent() {
+        Review review = Review.leave(new User(), new Book(), 3, "Okay");
+        review.updateContent(5, "Actually great!");
+
+        assertEquals(5, review.getRating());
+        assertEquals("Actually great!", review.getText());
+    }
+
+    @Test
+    void updateContentShouldValidateRating() {
+        Review review = Review.leave(new User(), new Book(), 3, "Okay");
+
+        assertThrows(DomainException.class, () -> review.updateContent(6, "Too high"));
+        assertThrows(DomainException.class, () -> review.updateContent(0, "Too low"));
+    }
+
+    @Test
+    void updateContentShouldValidateText() {
+        Review review = Review.leave(new User(), new Book(), 3, "Okay");
+
+        assertThrows(DomainException.class, () -> review.updateContent(3, ""));
+        assertThrows(DomainException.class, () -> review.updateContent(3, null));
     }
 }

@@ -10,6 +10,7 @@ import com.bsuir.book_store.users.infrastructure.UserRepository;
 import com.bsuir.book_store.shared.security.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import com.bsuir.book_store.recommendations.infrastructure.BookCoOccurrenceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,12 @@ class OrderControllerTest {
     @MockitoBean
     private BookElasticRepository elasticRepository;
 
+    @MockitoBean
+    private BookCoOccurrenceRepository bookCoOccurrenceRepository;
+
+    @MockitoBean
+    private org.springframework.mail.javamail.JavaMailSender javaMailSender;
+
     private String token;
     private UUID bookId;
 
@@ -67,7 +74,7 @@ class OrderControllerTest {
         userRepository.deleteAll();
         bookRepository.deleteAll();
 
-        User user = User.register("client", "client@test.com", passwordEncoder.encode("pass"), Role.CLIENT, null, null, null);
+        User user = User.register("client", "client@test.com", passwordEncoder.encode("pass"), Role.CLIENT, "Ivan", "Petrov", null);
         userRepository.save(user);
         token = jwtService.generateToken(user);
 

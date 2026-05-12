@@ -18,6 +18,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import com.bsuir.book_store.catalog.infrastructure.elastic.BookElasticRepository;
+import com.bsuir.book_store.recommendations.infrastructure.BookCoOccurrenceRepository;
+import org.springframework.mail.javamail.JavaMailSender;
 
 import java.math.BigDecimal;
 
@@ -39,6 +41,12 @@ class AnalyticsControllerTest {
 
     @MockitoBean
     private BookElasticRepository elasticRepository;
+
+    @MockitoBean
+    private BookCoOccurrenceRepository bookCoOccurrenceRepository;
+
+    @MockitoBean
+    private JavaMailSender javaMailSender;
 
     private String managerToken;
     private String clientToken;
