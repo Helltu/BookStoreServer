@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -39,6 +40,8 @@ public class GoogleBooksClient {
 
         } catch (HttpClientErrorException.TooManyRequests e) {
             throw new DomainException("Превышен лимит запросов к Google Books API. Попробуйте позже или настройте API ключ.");
+        } catch (HttpServerErrorException e) {
+            throw new DomainException("Google Books API временно недоступен (код " + e.getStatusCode().value() + "). Попробуйте позже.");
         } catch (Exception e) {
             throw new DomainException("Ошибка при обращении к Google Books API: " + e.getMessage());
         }
