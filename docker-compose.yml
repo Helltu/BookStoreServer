@@ -1,3 +1,5 @@
+name: book-store-server
+
 services:
     book-store-app:
       build: .
@@ -6,7 +8,17 @@ services:
         - "8080:8080"
       environment:
         - SPRING_PROFILES_ACTIVE=docker
+        - DB_USERNAME=${DB_USERNAME}
+        - DB_PASSWORD=${DB_PASSWORD}
+        - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+        - MANAGER_PASSWORD=${MANAGER_PASSWORD}
         - GITHUB_TOKEN=${GITHUB_TOKEN}
+        - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
+        - MAIL_USERNAME=${MAIL_USERNAME}
+        - MAIL_PASSWORD=${MAIL_PASSWORD}
+        - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+        - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+        - FRONTEND_URL=${FRONTEND_URL}
       depends_on:
         mysql-db:
           condition: service_healthy
@@ -22,10 +34,11 @@ services:
 
     mysql-db:
       image: mysql:8.0
+      container_name: mysql-db
       ports:
         - "3306:3306"
       environment:
-        - MYSQL_ROOT_PASSWORD=root
+        - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
         - MYSQL_DATABASE=book_store
       volumes:
         - mysql-data:/var/lib/mysql
@@ -40,6 +53,7 @@ services:
 
     elasticsearch:
       image: elasticsearch:8.11.1
+      container_name: elasticsearch
       ports:
         - "9200:9200"
       environment:
@@ -59,6 +73,7 @@ services:
 
     minio:
       image: minio/minio:latest
+      container_name: minio
       ports:
         - "9000:9000"
         - "9001:9001"
