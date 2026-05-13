@@ -23,6 +23,9 @@ public class MinioStorageService implements StorageService {
     @Value("${minio.url}")
     private String minioUrl;
 
+    @Value("${minio.public-url}")
+    private String minioPublicUrl;
+
     @PostConstruct
     public void init() {
         try {
@@ -70,9 +73,29 @@ public class MinioStorageService implements StorageService {
                     .stream(inputStream, size, -1)
                     .contentType(contentType)
                     .build());
-            return minioUrl + "/" + bucketName + "/" + filename;
+            return minioPublicUrl + "/" + bucketName + "/" + filename;
         } catch (Exception e) {
             throw new DomainException("Ошибка при загрузке потока в MinIO", e);
+        }
+    }
+
+    @Override
+    public void delete(String url) {
+        if (url == null || url.isBlank()) return;
+        try {
+            String prefix = minioPublicUrl + "/" + bucketName + "/";
+            String altPrefix = minioUrl + "/" + bucketName + "/";
+            String objectName;
+            if (url.startsWith(prefix)) {
+                objectName = url.substring(prefix.length());
+            } else if (url.startsWith(altPrefix)) {
+                objectName = url.substring(altPrefix.length());
+            } else {
+                return;
+            }
+            minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(objectName).build());
+        } catch (Exception e) {
+            throw new DomainException("Ошибка при удалении файла из MinIO", e);
         }
     }
 }

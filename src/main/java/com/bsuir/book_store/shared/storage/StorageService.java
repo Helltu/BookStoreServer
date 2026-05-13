@@ -6,4 +6,5 @@ import java.io.InputStream;
 public interface StorageService {
     String store(MultipartFile file);
     String store(InputStream inputStream, String filename, String contentType, long size);
+    void delete(String url);
 }

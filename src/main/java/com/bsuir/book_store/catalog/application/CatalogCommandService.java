@@ -139,6 +139,7 @@ public class CatalogCommandService {
 
         Image cover = book.getCoverImage();
         if (coverFile != null && !coverFile.isEmpty()) {
+            if (cover != null) storageService.delete(cover.getUrl());
             cover = Image.builder().url(storageService.store(coverFile)).imageType(ImageType.COVER).build();
         }
 
@@ -150,6 +151,9 @@ public class CatalogCommandService {
                 book.getPreviewImages().stream()
                         .filter(img -> keepUrls.contains(img.getUrl()))
                         .forEach(previews::add);
+                book.getPreviewImages().stream()
+                        .filter(img -> !keepUrls.contains(img.getUrl()))
+                        .forEach(img -> storageService.delete(img.getUrl()));
             }
             if (previewFiles != null) {
                 for (MultipartFile pf : previewFiles) {
@@ -245,6 +249,7 @@ public class CatalogCommandService {
             book = bookRepository.save(book);
             searchSyncService.syncBook(book);
         } else {
+            deleteBookImages(book);
             bookRepository.deleteById(id);
             elasticsearchOperations.delete(id.toString(), BookDocument.class);
         }
@@ -258,8 +263,15 @@ public class CatalogCommandService {
         if (orderRepository.existsAnyOrderForBook(id)) {
             throw new DomainException("Нельзя полностью удалить книгу: существуют связанные заказы");
         }
+        Book book = bookRepository.findById(id).orElseThrow();
+        deleteBookImages(book);
         bookRepository.deleteById(id);
         elasticsearchOperations.delete(id.toString(), BookDocument.class);
+    }
+
+    private void deleteBookImages(Book book) {
+        if (book.getCoverImage() != null) storageService.delete(book.getCoverImage().getUrl());
+        if (book.getPreviewImages() != null) book.getPreviewImages().forEach(img -> storageService.delete(img.getUrl()));
     }
 
     @Transactional
