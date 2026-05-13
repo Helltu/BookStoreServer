@@ -78,7 +78,15 @@ public class CatalogImportExportService {
                         b.getPublisher() != null ? b.getPublisher().getId() : null,
                         b.getAuthors().stream().map(Author::getId).collect(Collectors.toList()),
                         b.getGenres().stream().map(Genre::getId).collect(Collectors.toList()),
-                        b.getKeywords()
+                        b.getKeywords(),
+                        b.getPagesCount(),
+                        b.getFormat(),
+                        b.getWeight(),
+                        b.getDimensions(),
+                        b.getAgeRating(),
+                        b.getPublicationYear(),
+                        b.getLanguage(),
+                        b.getOriginalLanguage()
                 ))
                 .collect(Collectors.toList());
     }
@@ -179,8 +187,8 @@ public class CatalogImportExportService {
             }
 
             entityManager.createNativeQuery(
-                    "INSERT INTO books (id, title, isbn, description, stock_quantity, cost, publisher_id, average_rating, total_reviews, created_at, updated_at) " +
-                            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, NOW(), NOW())")
+                    "INSERT INTO books (id, title, isbn, description, stock_quantity, cost, publisher_id, average_rating, total_reviews, pages_count, format, weight, dimensions, age_rating, publication_year, language, original_language, created_at, updated_at) " +
+                            "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 0, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, NOW(), NOW())")
                     .setParameter(1, dto.id())
                     .setParameter(2, dto.title())
                     .setParameter(3, dto.isbn())
@@ -188,6 +196,14 @@ public class CatalogImportExportService {
                     .setParameter(5, dto.stockQuantity())
                     .setParameter(6, dto.cost())
                     .setParameter(7, dto.publisherId())
+                    .setParameter(8, dto.pagesCount())
+                    .setParameter(9, dto.format() != null ? dto.format().name() : null)
+                    .setParameter(10, dto.weight())
+                    .setParameter(11, dto.dimensions())
+                    .setParameter(12, dto.ageRating() != null ? dto.ageRating().name() : null)
+                    .setParameter(13, dto.publicationYear())
+                    .setParameter(14, dto.language())
+                    .setParameter(15, dto.originalLanguage())
                     .executeUpdate();
 
             for (UUID authorId : dto.authorIds()) {

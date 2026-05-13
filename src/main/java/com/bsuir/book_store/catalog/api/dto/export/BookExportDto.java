@@ -1,5 +1,8 @@
 package com.bsuir.book_store.catalog.api.dto.export;
 
+import com.bsuir.book_store.catalog.domain.model.AgeRating;
+import com.bsuir.book_store.catalog.domain.model.BookFormat;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -15,5 +18,13 @@ public record BookExportDto(
         UUID publisherId,
         List<UUID> authorIds,
         List<UUID> genreIds,
-        Set<String> keywords
+        Set<String> keywords,
+        Integer pagesCount,
+        BookFormat format,
+        Double weight,
+        String dimensions,
+        AgeRating ageRating,
+        Integer publicationYear,
+        String language,
+        String originalLanguage
 ) {}
