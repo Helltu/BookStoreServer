@@ -54,7 +54,6 @@ public class AnalyticsService {
                 })
                 .toList();
 
-        // --- Summary ---
         long totalOrders = orders.size();
         BigDecimal totalRevenue = orders.stream()
                 .map(Order::getTotalCost)
@@ -69,7 +68,6 @@ public class AnalyticsService {
         Double avgDeliveryHoursRaw = orderRepository.avgDeliveryHours(OrderStatus.DELIVERED, tsFrom, tsTo);
         double avgDeliveryHours = avgDeliveryHoursRaw != null ? Math.round(avgDeliveryHoursRaw * 10.0) / 10.0 : 0.0;
 
-        // --- Period comparison ---
         AnalyticsResponse.PeriodComparison periodComparison = null;
         if (startDate != null && endDate != null) {
             long periodDays = endDate.toEpochDay() - startDate.toEpochDay() + 1;
@@ -101,7 +99,6 @@ public class AnalyticsService {
                     .build();
         }
 
-        // --- Sales over time ---
         Map<LocalDate, BigDecimal> revenueByDate = orders.stream()
                 .collect(Collectors.groupingBy(
                         o -> o.getCreatedAt().toLocalDateTime().toLocalDate(),
@@ -115,7 +112,6 @@ public class AnalyticsService {
                         .build())
                 .toList();
 
-        // --- Sales by category ---
         List<OrderItem> allItems = orders.stream().flatMap(o -> o.getOrderItems().stream()).toList();
         Map<String, Long> categoryStats = allItems.stream()
                 .flatMap(item -> item.getBook().getGenres().stream())
@@ -124,7 +120,6 @@ public class AnalyticsService {
                 .map(e -> AnalyticsResponse.CategoryPoint.builder().category(e.getKey()).count(e.getValue()).build())
                 .toList();
 
-        // --- Top / slow-moving books ---
         Map<String, Long> bookStats = allItems.stream()
                 .collect(Collectors.groupingBy(OrderItem::getBookTitle, Collectors.summingLong(OrderItem::getQuantity)));
         List<AnalyticsResponse.BookPoint> topSellingBooks = bookStats.entrySet().stream()
@@ -148,11 +143,9 @@ public class AnalyticsService {
                 .limit(SLOW_MOVING_LIMIT)
                 .toList();
 
-        // --- Orders by status ---
         Map<String, Long> ordersByStatus = orders.stream()
                 .collect(Collectors.groupingBy(o -> o.getStatus().name(), Collectors.counting()));
 
-        // --- Customer metrics ---
         long uniqueCustomers = orderRepository.countUniqueCustomers(EXCLUDED, tsFrom, tsTo);
         List<Object[]> topCustomersRaw = orderRepository.findTopCustomers(EXCLUDED, tsFrom, tsTo, PageRequest.of(0, TOP_CUSTOMERS_LIMIT));
         List<TopCustomer> topCustomers = topCustomersRaw.stream()
@@ -164,13 +157,11 @@ public class AnalyticsService {
                         .build())
                 .toList();
 
-        // --- Return metrics ---
         long returnRequested = orders.stream().filter(o -> o.getStatus() == OrderStatus.RETURN_REQUESTED).count();
         long returned = orders.stream().filter(o -> o.getStatus() == OrderStatus.RETURNED).count();
         BigDecimal returnedRevenue = orderRepository.sumTotalCostByStatus(OrderStatus.RETURNED);
         if (returnedRevenue == null) returnedRevenue = BigDecimal.ZERO;
 
-        // --- Stock metrics ---
         long outOfStockCount = bookRepository.countOutOfStock();
         List<LowStockBook> lowStockBooks = bookRepository
                 .findByStockQuantityLessThanEqualAndDeletedAtIsNullOrderByStockQuantityAsc(lowStockThreshold)

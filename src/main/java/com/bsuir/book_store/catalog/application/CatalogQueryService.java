@@ -109,7 +109,6 @@ public class CatalogQueryService {
                 ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize())
                 : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(validOrders));
 
-        // 2. Проверка наличия фильтров
         boolean hasQuery = criteria.getQuery() != null && !criteria.getQuery().isBlank();
         boolean hasMinPrice = criteria.getMinPrice() != null;
         boolean hasMaxPrice = criteria.getMaxPrice() != null;

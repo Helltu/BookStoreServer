@@ -70,7 +70,7 @@ public class Order {
 
     public void addItem(Book book, int quantity) {
         if (quantity <= 0) {
-            throw new DomainException("Quantity must be greater than zero");
+            throw new DomainException("Количество должно быть больше нуля");
         }
         
         book.reserveStock(quantity); // Вся магия теперь внутри!

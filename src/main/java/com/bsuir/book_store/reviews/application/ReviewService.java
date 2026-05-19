@@ -38,10 +38,10 @@ public class ReviewService {
         }
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new DomainException("User not found"));
+                .orElseThrow(() -> new DomainException("Пользователь не найден"));
 
         Book book = bookRepository.findById(request.getBookId())
-                .orElseThrow(() -> new DomainException("Book not found"));
+                .orElseThrow(() -> new DomainException("Книга не найдена"));
 
         Review review = Review.leave(
                 user,
@@ -60,7 +60,7 @@ public class ReviewService {
     @Transactional
     public void deleteReview(UUID reviewId) {
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new DomainException("Review not found"));
+                .orElseThrow(() -> new DomainException("Отзыв не найден"));
         Book book = review.getBook();
         
         reviewRepository.delete(review);

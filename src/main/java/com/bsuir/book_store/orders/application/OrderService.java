@@ -44,7 +44,7 @@ public class OrderService {
     @Transactional
     public UUID createOrder(CreateOrderRequest request, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new DomainException("User not found"));
+                .orElseThrow(() -> new DomainException("Пользователь не найден"));
 
         if (user.getFirstName() == null || user.getFirstName().isBlank() ||
             user.getLastName() == null || user.getLastName().isBlank()) {
@@ -56,7 +56,7 @@ public class OrderService {
         List<Book> reservedBooks = new ArrayList<>();
         for (var itemRequest : request.getItems()) {
             Book book = bookRepository.findById(itemRequest.getBookId())
-                    .orElseThrow(() -> new DomainException("Book not found: " + itemRequest.getBookId()));
+                    .orElseThrow(() -> new DomainException("Книга не найдена: " + itemRequest.getBookId()));
 
             if (book.getStockQuantity() < itemRequest.getQuantity()) {
                 throw new DomainException("Недостаточно товара '" + book.getTitle() + "' на складе. Доступно: " + book.getStockQuantity());
@@ -82,7 +82,7 @@ public class OrderService {
     @Transactional
     public void changeStatus(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new DomainException("Order not found"));
+                .orElseThrow(() -> new DomainException("Заказ не найден"));
 
         boolean becomingCancelled = newStatus == OrderStatus.CANCELLED
                 && order.getStatus() != OrderStatus.CANCELLED;
@@ -115,7 +115,7 @@ public class OrderService {
                 .orElseThrow(() -> new DomainException("Заказ не найден"));
 
         User requester = userRepository.findByUsername(username)
-                .orElseThrow(() -> new DomainException("User not found"));
+                .orElseThrow(() -> new DomainException("Пользователь не найден"));
 
         boolean isManager = requester.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("MANAGER"));

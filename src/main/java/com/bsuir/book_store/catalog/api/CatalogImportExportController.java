@@ -25,8 +25,6 @@ public class CatalogImportExportController {
 
     private final CatalogImportExportService importExportService;
 
-    // ---- EXPORT ----
-
     @GetMapping("/export/authors")
     @IsManager
     @Operation(summary = "Экспорт всех авторов в формате JSON")
@@ -54,8 +52,6 @@ public class CatalogImportExportController {
     public ResponseEntity<List<BookExportDto>> exportBooks() {
         return ResponseEntity.ok(importExportService.exportBooks());
     }
-
-    // ---- IMPORT ----
 
     @PostMapping(value = "/import/authors", consumes = "application/json")
     @IsManager

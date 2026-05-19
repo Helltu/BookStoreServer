@@ -42,8 +42,6 @@ public class CatalogImportExportService {
     private final SearchSyncService searchSyncService;
     private final ElasticsearchOperations elasticsearchOperations;
 
-    // ---- EXPORT ----
-
     @Transactional(readOnly = true)
     public List<AuthorExportDto> exportAuthors() {
         return authorRepository.findAll().stream()
@@ -90,8 +88,6 @@ public class CatalogImportExportService {
                 ))
                 .collect(Collectors.toList());
     }
-
-    // ---- IMPORT ----
 
     @Transactional
     public int importAuthors(List<AuthorExportDto> dtos) {
